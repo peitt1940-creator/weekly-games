@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小小元素實驗室</title>
+<style>
+:root{
+  --bg:#f6f3ec; --panel:#ffffff; --ink:#2b2a33; --muted:#6b6878; --line:#e3ddd0;
+  --accent:#2f7d6d; --accent-2:#e0864a; --ok:#2f9e5b; --bad:#d0493a; --chip:#f0ebe0;
+  --lab:#161a26;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15161c; --panel:#1f2029; --ink:#ecebf2; --muted:#a3a1b3; --line:#33343f;
+    --accent:#4fb39f; --accent-2:#f0a06a; --ok:#4cc27c; --bad:#ef6f61; --chip:#2a2b36; --lab:#0d0f16;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15161c; --panel:#1f2029; --ink:#ecebf2; --muted:#a3a1b3; --line:#33343f;
+  --accent:#4fb39f; --accent-2:#f0a06a; --ok:#4cc27c; --bad:#ef6f61; --chip:#2a2b36; --lab:#0d0f16;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;}
+body{min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:12px 16px 32px}
+button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 12px;touch-action:manipulation}
+button:active{transform:scale(.97)}
+button.primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:700}
+.screen{display:none}
+.screen.on{display:block}
+h1{font-size:1.6rem;margin:.4em 0 .2em}
+h2{font-size:1.2rem;margin:.2em 0 .4em}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+.muted{color:var(--muted)}
+.sign{font-size:.85rem;color:var(--muted);margin-top:18px;text-align:center}
+.hero{font-size:3rem;text-align:center;margin:10px 0 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.mtitle{font-weight:800;font-size:1.05rem}
+.goal{font-size:.95rem;margin:4px 0 6px}
+.prog{height:10px;background:var(--chip);border-radius:6px;overflow:hidden}
+.prog>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.canvasBox{position:relative;margin-top:8px;border-radius:12px;overflow:hidden;background:var(--lab);border:1px solid var(--line)}
+canvas#lab{display:block;width:100%;height:auto;touch-action:none;image-rendering:pixelated;cursor:crosshair}
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:10px}
+.pal{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-width:2px}
+.pal .e{font-size:1.5rem;line-height:1}
+.pal .n{font-size:.9rem;font-weight:700;margin-top:2px}
+.pal .c{font-size:.75rem;color:var(--muted)}
+.pal.sel{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.pal:disabled{opacity:.45}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.toast{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(calc(-100% - 40px));background:var(--panel);border:2px solid var(--accent-2);border-radius:14px;padding:10px 14px;max-width:min(92vw,520px);z-index:50;transition:transform .3s;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;border:1px solid var(--line)}
+.opts{display:grid;gap:8px;margin-top:8px}
+.opts button{text-align:left}
+.opts button.pick{border-color:var(--accent);border-width:2px}
+.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.dexc{border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--chip);font-size:.88rem}
+.dexc.lock{opacity:.55}
+.dexc b{display:block;font-size:.95rem;margin-bottom:2px}
+.mlist{display:grid;gap:6px;margin-top:8px}
+.mitem{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.tag.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.status{font-size:.85rem;color:var(--muted);min-height:1.2em;margin-top:4px}
+.status.bad{color:var(--bad);font-weight:700}
+table.res{width:100%;border-collapse:collapse;font-size:.9rem}
+table.res td,table.res th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 開始畫面 -->
+<section id="sStart" class="screen on">
+  <div class="hero">🧪🔥💧🧊🌱</div>
+  <h1 style="text-align:center">小小元素實驗室</h1>
+  <p style="text-align:center" class="muted">把沙、水、火、冰、鹽、種子丟進實驗箱，看看它們碰在一起會發生什麼事。</p>
+  <div class="card">
+    <p style="margin-top:0">你是「微塵研究所」新來的見習研究員。研究所的機器助手<b>小點</b>準備了五個任務箱，每箱的材料都有限量。</p>
+    <ul style="padding-left:1.2em;margin-bottom:0">
+      <li>用手指或滑鼠在黑色實驗箱裡<b>畫</b>，就能放材料。</li>
+      <li>每個任務開始前，先猜猜看會發生什麼，再動手驗證。</li>
+      <li>第一次看到兩種東西起反應，會記進<b>發現圖鑑</b>（共 9 種）。</li>
+    </ul>
+  </div>
+  <div class="row" style="justify-content:center">
+    <button class="primary" id="btnBegin">開始實驗</button>
+    <button id="btnFreeStart">🧫 自由實驗室</button>
+  </div>
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>
+</section>
+
+<!-- 任務選單 -->
+<section id="sMenu" class="screen">
+  <div class="mbar"><h2>任務箱</h2><button id="btnDex1">📖 發現圖鑑 <span class="dexCount"></span></button></div>
+  <div class="mlist" id="mlist"></div>
+  <div class="tools"><button id="btnFree">🧫 自由實驗室（材料無限）</button><button id="btnHome">回開始畫面</button></div>
+</section>
+
+<!-- 遊戲畫面 -->
+<section id="sPlay" class="screen">
+  <div class="mbar">
+    <div class="mtitle" id="mTitle"></div>
+    <div class="row"><button id="btnDex2">📖 <span class="dexCount"></span></button><button id="btnBack">任務箱</button></div>
+  </div>
+  <div class="goal" id="mGoal"></div>
+  <div class="prog"><i id="mProg"></i></div>
+  <div class="status" id="mStatus"></div>
+  <div class="canvasBox"><canvas id="lab" width="600" height="450"></canvas></div>
+  <div class="palette" id="palette"></div>
+  <div class="tools">
+    <button id="btnPause">⏸ 暫停</button>
+    <button id="btnReset">↺ 重來</button>
+    <button id="btnHint">💡 小點的提示</button>
+    <button id="btnBrush">筆刷：中</button>
+  </div>
+</section>
+
+<!-- 結局 -->
+<section id="sEnd" class="screen">
+  <div class="hero">🏅</div>
+  <h1 style="text-align:center">五個任務箱都完成了</h1>
+  <div class="card" id="endSummary"></div>
+  <div class="card">
+    <h2>回頭想一想</h2>
+    <ol style="padding-left:1.2em;margin:0">
+      <li>哪一題的實驗結果跟你一開始猜的不一樣？你後來怎麼發現的？</li>
+      <li>任務箱 5 裡，倒水和撒鹽的效果剛好相反。你覺得原因可能是什麼？</li>
+      <li>在自由實驗室裡，試著設計一個「連鎖反應」：一種反應的結果，剛好觸發下一種反應。</li>
+    </ol>
+  </div>
+  <div class="row" style="justify-content:center">
+    <button class="primary" id="btnEndFree">🧫 去自由實驗室</button>
+    <button id="btnEndMenu">回任務箱</button>
+  </div>
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>
+</section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+(function(){
+"use strict";
+// ===== 元素定義 =====
+const W=60,H=45,N=W*H,S=10;
+const E=0,WALL=1,SAND=2,WATER=3,FIRE=4,WOOD=5,STEAM=6,ICE=7,GLASS=8,SEED=9,PLANT=10,SALT=11,HEATER=12,GOLD=13;
+const INFO={
+  [SAND]:{n:"沙",e:"🏖️"},[WATER]:{n:"水",e:"💧"},[FIRE]:{n:"火",e:"🔥"},[WOOD]:{n:"木頭",e:"🪵"},
+  [ICE]:{n:"冰",e:"🧊"},[SEED]:{n:"種子",e:"🌰"},[SALT]:{n:"鹽",e:"🧂"},[HEATER]:{n:"爐子",e:"♨️"},[WALL]:{n:"石牆",e:"🧱"}
+};
+const COL={
+  [E]:[22,26,38],[WALL]:[112,116,132],[SAND]:[226,192,110],[WATER]:[56,128,240],[FIRE]:[255,120,30],
+  [WOOD]:[140,92,48],[STEAM]:[200,210,225],[ICE]:[165,236,250],[GLASS]:[120,210,200],[SEED]:[120,86,36],
+  [PLANT]:[70,170,80],[SALT]:[240,240,236],[HEATER]:[190,50,45],[GOLD]:[250,190,40]
+};
+let g=new Uint8Array(N), life=new Int16Array(N), shade=new Uint8Array(N), stamp=new Uint32Array(N), frame=0;
+const rnd=Math.random;
+function get(x,y){return (x<0||x>=W||y<0||y>=H)?WALL:g[y*W+x];}
+function put(x,y,t,l){const i=y*W+x;g[i]=t;life[i]=l||0;shade[i]=(rnd()*36)|0;stamp[i]=frame;}
+function swap(i,j){let t=g[i];g[i]=g[j];g[j]=t;t=life[i];life[i]=life[j];life[j]=t;t=shade[i];shade[i]=shade[j];shade[j]=t;stamp[i]=frame;stamp[j]=frame;}
+const D4=[[0,1],[0,-1],[1,0],[-1,0]];
+
+// ===== 發現圖鑑 =====
+const DEX=[
+  {k:"sprout",t:"🌰＋💧 發芽",d:"種子吸到水，開始冒出芽。",q:"想一想：真的種子除了水，還需要什麼才長得好？"},
+  {k:"steam",t:"💧＋🔥 變成水蒸氣",d:"水被加熱，變成往上飄的水蒸氣。",q:"想一想：燒開水時，壺口冒出的白霧是什麼？"},
+  {k:"burn",t:"🔥＋🪵 燃燒",d:"木頭是燃料，火會沿著木頭一路燒過去。",q:"想一想：燃燒需要哪三樣東西？"},
+  {k:"smother",t:"🏖️＋🔥 悶熄",d:"沙子蓋住火，隔開了空氣，火就熄了。",q:"想一想：露營時為什麼常用沙子或土蓋營火？"},
+  {k:"glass",t:"🏖️＋♨️ 變成玻璃",d:"真的玻璃是用沙子在一千多度的高溫熔化做成的。熱會往上傳，但越傳越弱。",q:"想一想：為什麼最上層的沙子沒有變成玻璃？"},
+  {k:"melt",t:"🧊＋🔥 融化",d:"冰遇到熱，融化成水。",q:"想一想：冰塊放在手心和放在桌上，哪個融得快？"},
+  {k:"condense",t:"☁️＋🧊 凝結",d:"水蒸氣碰到冰冷的東西，變回小水滴。",q:"想一想：冰飲料的杯子外面為什麼會「流汗」？"},
+  {k:"freeze",t:"💧＋🧊 結冰",d:"很冷的冰，會讓貼著它的水也結成冰。",q:"想一想：想讓冰融化，倒冷水會有用嗎？"},
+  {k:"saltice",t:"🧂＋🧊 鹽融冰",d:"鹽會讓冰在更低的溫度才結凍，所以冰會融化，鹽水也比較不容易再結冰。",q:"想一想：下雪的國家為什麼要在馬路上撒鹽？"}
+];
+const found={};
+function discover(k){
+  if(found[k]) return;
+  found[k]=true;
+  if(mission) mission.disc.push(k);
+  const c=DEX.find(x=>x.k===k);
+  showToast("<b>新發現！</b> "+c.t+"<br><span class='muted'>"+c.d+"</span>");
+  updDexCount();
+}
+function updDexCount(){
+  const n=Object.keys(found).length;
+  document.querySelectorAll(".dexCount").forEach(e=>e.textContent=n+"/"+DEX.length);
+}
+
+// ===== 模擬 =====
+let steamMax=900;
+function neighbors(x,y,fn){for(const d of D4){const nx=x+d[0],ny=y+d[1];if(nx<0||nx>=W||ny<0||ny>=H)continue;if(fn(nx,ny,ny*W+nx,g[ny*W+nx])===false)return;}}
+function powder(x,y,i,t){
+  const b=get(x,y+1);
+  if(b===E||b===WATER||b===STEAM){swap(i,i+W);return;}
+  const d=rnd()<.5?1:-1;
+  for(const dx of [d,-d]){
+    const c=get(x+dx,y+1);
+    if((c===E||c===WATER||c===STEAM)&&get(x+dx,y)!==WALL){swap(i,i+W+dx);return;}
+  }
+}
+function step(){
+  frame++;
+  const ltr=frame&1;
+  for(let y=H-1;y>=0;y--){
+    for(let k=0;k<W;k++){
+      const x=ltr?k:W-1-k, i=y*W+x, t=g[i];
+      if(t===E||t===WALL||t===GOLD||stamp[i]===frame) continue;
+      switch(t){
+      case SAND:{
+        let done=false;
+        neighbors(x,y,(nx,ny,j,c)=>{
+          if(c===HEATER&&rnd()<.03){put(x,y,GLASS,2);discover("glass");done=true;return false;}
+          if(c===GLASS&&life[j]>0&&rnd()<.02){put(x,y,GLASS,ny===y?life[j]:life[j]-1);discover("glass");done=true;return false;}
+        });
+        if(!done) powder(x,y,i,t);
+        break;}
+      case SALT:{
+        let done=false;
+        neighbors(x,y,(nx,ny,j,c)=>{
+          if(c===ICE&&rnd()<.08){put(nx,ny,WATER,1);discover("saltice");if(rnd()<.3){put(x,y,E);}done=true;return false;}
+        });
+        if(!done&&g[i]===SALT) powder(x,y,i,t);
+        break;}
+      case SEED: powder(x,y,i,t); break;
+      case WATER:{
+        let done=false, nearSalt=false;
+        neighbors(x,y,(nx,ny,j,c)=>{
+          if(c===SALT||(c===WATER&&life[j]===1)) nearSalt=true;
+          if(c===FIRE){put(nx,ny,E);put(x,y,STEAM);discover("steam");done=true;return false;}
+          if(c===HEATER&&rnd()<.012){put(x,y,STEAM);discover("steam");done=true;return false;}
+          if(c===SEED){put(nx,ny,PLANT,8);put(x,y,E);discover("sprout");done=true;return false;}
+          if(c===PLANT&&rnd()<.08){life[j]=Math.min(12,life[j]+4);put(x,y,E);done=true;return false;}
+        });
+        if(done) break;
+        if(nearSalt) life[i]=1;
+        if(life[i]===1){
+          let hit=false; neighbors(x,y,(nx,ny,j,c)=>{if(c===ICE&&rnd()<.006){put(nx,ny,WATER,1);hit=true;return false;}});
+        } else {
+          let ice=false; neighbors(x,y,(nx,ny,j,c)=>{if(c===ICE)ice=true;});
+          if(ice&&rnd()<.004){put(x,y,ICE);discover("freeze");break;}
+        }
+        const b=get(x,y+1);
+        if(b===E||b===STEAM){swap(i,i+W);break;}
+        const d=rnd()<.5?1:-1;
+        let moved=false;
+        for(const dx of [d,-d]){const c=get(x+dx,y+1);if((c===E||c===STEAM)&&get(x+dx,y)===E){swap(i,i+W+dx);moved=true;break;}}
+        if(moved) break;
+        for(const dx of [d,-d]){
+          let far=0;
+          for(let s=1;s<=3;s++){if(get(x+dx*s,y)===E) far=s; else break;}
+          if(far){swap(i,i+dx*far);break;}
+        }
+        break;}
+      case FIRE:{
+        life[i]--;
+        if(life[i]<=0){put(x,y,E);break;}
+        let done=false;
+        neighbors(x,y,(nx,ny,j,c)=>{
+          if(c===WOOD&&rnd()<.006){put(nx,ny,FIRE,150+(rnd()*60|0));discover("burn");}
+          else if((c===PLANT||c===SEED)&&rnd()<.08){put(nx,ny,FIRE,25);discover("burn");}
+          else if(c===ICE&&rnd()<.05){put(nx,ny,WATER);discover("melt");}
+          else if(c===SAND&&rnd()<.25){put(x,y,E);discover("smother");done=true;return false;}
+        });
+        if(done) break;
+        let fuel=false; neighbors(x,y,(nx,ny,j,c)=>{if(c===WOOD||c===PLANT)fuel=true;});
+        if(!fuel&&rnd()<.45){
+          const d=rnd()<.5?1:-1;
+          if(get(x,y-1)===E){swap(i,i-W);}
+          else if(get(x+d,y-1)===E){swap(i,i-W+d);}
+        }
+        break;}
+      case STEAM:{
+        life[i]++;
+        if(life[i]>steamMax){put(x,y,E);break;}
+        let done=false;
+        neighbors(x,y,(nx,ny,j,c)=>{if(c===ICE&&rnd()<.2){put(x,y,WATER);discover("condense");done=true;return false;}});
+        if(done) break;
+        const d=rnd()<.5?1:-1;
+        if(rnd()<.7&&get(x,y-1)===E){swap(i,i-W);break;}
+        if(get(x+d,y-1)===E&&rnd()<.5){swap(i,i-W+d);break;}
+        for(const dx of [d,-d]){if(get(x+dx,y)===E){swap(i,i+dx);break;}}
+        break;}
+      case PLANT:{
+        if(life[i]>0&&rnd()<.15){
+          const opts=[[0,-1],[-1,-1],[1,-1],[-1,0],[1,0]];
+          const o=rnd()<.6?opts[0]:opts[1+(rnd()*4|0)];
+          const nx=x+o[0],ny=y+o[1];
+          if(get(nx,ny)===E){put(nx,ny,PLANT,life[i]-1);life[i]=0;}
+        }
+        break;}
+      case HEATER:{
+        if(get(x,y-1)===E&&rnd()<.05) put(x,y-1,FIRE,14);
+        neighbors(x,y,(nx,ny,j,c)=>{if(c===ICE&&rnd()<.05){put(nx,ny,WATER);discover("melt");}});
+        break;}
+      }
+    }
+  }
+}
+function count(t,z){let n=0;const x0=z?z[0]:0,y0=z?z[1]:0,x1=z?z[2]:W-1,y1=z?z[3]:H-1;
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(g[y*W+x]===t)n++;return n;}
+
+// ===== 地圖工具 =====
+function clear(){g.fill(0);life.fill(0);stamp.fill(0);for(let i=0;i<N;i++)shade[i]=(rnd()*36)|0;frame=0;}
+function rect(x0,y0,x1,y1,t,l){for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)put(x,y,t,l);}
+function floor(){rect(0,H-3,W-1,H-1,WALL);}
+
+// ===== 任務 =====
+const MISSIONS=[
+ {id:1,title:"任務箱 1｜乾巴巴的花圃",
+  story:"花圃的土乾得裂開了。小點說：「這裡需要至少 80 格綠色植物，研究所的蜜蜂才有地方停。」",
+  goal:"讓植物長到 80 格以上",
+  predict:{q:"把種子丟進實驗箱，它什麼時候會開始長？",o:["一放下去就會自己長","碰到水才開始長","要等很久，什麼都不用做"],a:1},
+  hint:"先撒幾顆種子，再把水倒在種子上。植物碰到更多水，會繼續長出新枝。",
+  palette:{[SEED]:8,[WATER]:160},
+  build(){floor();rect(14,36,15,41,WALL);rect(30,36,31,41,WALL);rect(46,36,47,41,WALL);},
+  check(){const n=count(PLANT);return {p:n/80,done:n>=80,txt:"植物："+n+" / 80 格"};}
+ },
+ {id:2,title:"任務箱 2｜森林小屋冒煙了",
+  story:"小木屋的屋頂被閃電打中了！要在火燒掉小屋一半以前，把火全部弄熄。",
+  goal:"把火全部弄熄，而且小屋至少留下一半",
+  predict:{q:"把沙子倒在火上，會發生什麼事？",o:["火會變得更大","火會被悶熄","沙子也會燒起來"],a:1},
+  hint:"水和沙子都能滅火。從火的上方倒下去，蓋住正在燒的地方。材料有限，別浪費在沒火的地方。",
+  palette:{[WATER]:90,[SAND]:90},
+  build(){floor();
+    for(let y=30;y<=41;y++)for(let x=21;x<=38;x++){ if(y>=35&&y<=38&&((x>=24&&x<=27)||(x>=32&&x<=35))) continue; if(y>=37&&x>=29&&x<=30) continue; put(x,y,WOOD);}
+    for(let k=0;k<5;k++)for(let x=21+k*2;x<=38-k*2;x++)put(x,29-k,WOOD);
+    this.wood0=count(WOOD);
+    for(const [x,y] of [[23,28],[24,28],[25,27],[26,27],[24,27],[27,26]]) put(x,y,FIRE,240);
+  },
+  started:false,
+  check(){
+    const w=count(WOOD), f=count(FIRE), keep=w/this.wood0;
+    if(keep<0.5) return {p:keep,fail:true,txt:"小屋只剩 "+Math.round(keep*100)+"%……"};
+    return {p:f===0?1:Math.min(.95,1-f/80),done:f===0,txt:"還在燒的火："+f+" 格｜小屋剩下 "+Math.round(keep*100)+"%"};
+  }
+ },
+ {id:3,title:"任務箱 3｜做一片玻璃窗",
+  story:"研究所的窗戶破了。模具底下有一排很燙的爐子，小點想用它做一片新的玻璃。",
+  goal:"在虛線框裡做出 36 格以上的玻璃",
+  predict:{q:"沙子碰到很燙的爐子，會變成什麼？",o:["會變成水","會變成玻璃","會冒煙消失"],a:1},
+  hint:"把沙子倒進模具裡，鋪滿底部。熱只會往上傳兩三層，倒太多沙子會浪費。水碰到爐子會直接變成水蒸氣。",
+  palette:{[SAND]:120,[WATER]:40},
+  zone:[23,38,36,40],
+  build(){floor();rect(22,33,22,41,WALL);rect(37,33,37,41,WALL);rect(23,41,36,41,HEATER);},
+  check(){const n=count(GLASS,this.zone);return {p:n/36,done:n>=36,txt:"框裡的玻璃："+n+" / 36 格"};}
+ },
+ {id:4,title:"任務箱 4｜隔壁的空水池",
+  story:"左邊水池有很多水，右邊水池卻是空的，中間被石牆擋住。小點說：「不能打破牆，但箱子是密封的，水可以飛過去。」",
+  goal:"讓右邊虛線框裡累積 30 格以上的水",
+  predict:{q:"水蒸氣碰到冰冷的東西，會發生什麼事？",o:["變回小水滴","變得更熱","直接消失"],a:0},
+  hint:"左邊的爐子會慢慢把水變成水蒸氣，水蒸氣會往上飄、在天花板下飄來飄去。在右邊水池的正上方放冰，看看會發生什麼。",
+  palette:{[ICE]:50,[SAND]:40},
+  zone:[31,30,56,40],
+  build(){
+    rect(2,4,57,4,WALL);rect(2,4,2,41,WALL);rect(57,4,57,41,WALL);rect(2,41,57,43,WALL);
+    rect(30,26,30,41,WALL);rect(3,41,29,41,HEATER);rect(3,33,29,40,WATER);
+  },
+  check(){const n=count(WATER,this.zone);return {p:n/30,done:n>=30,txt:"右邊水池的水："+n+" / 30 格"};}
+ },
+ {id:5,title:"任務箱 5｜冰凍寶箱",
+  story:"一個金色寶箱被凍在大冰塊裡。這箱沒有火，只有鹽和水。要把框裡的冰全部清掉。",
+  goal:"讓虛線框裡的冰變成 0 格",
+  predict:{q:"把水倒在大冰塊上，會發生什麼事？",o:["冰會被水沖掉、融化","水會結冰，冰塊變更大","什麼都不會發生"],a:1},
+  hint:"先倒一點點水試試看，觀察冰塊有沒有變小。再試試看鹽。鹽要撒在冰的上面和旁邊，讓它沿著冰滑下去。",
+  palette:{[SALT]:130,[WATER]:40},
+  zone:[23,33,34,41],
+  build(){floor();rect(24,34,33,41,ICE);rect(28,40,29,41,GOLD);},
+  check(){const n=count(ICE,this.zone);return {p:1-n/76,done:n===0,txt:"框裡剩下的冰："+n+" 格"};}
+ }
+];
+const FREE={id:0,title:"🧫 自由實驗室",story:"",goal:"材料無限。試著做出連鎖反應，或把 9 種發現都找齊。",palette:{[SAND]:Infinity,[WATER]:Infinity,[FIRE]:Infinity,[ICE]:Infinity,[SALT]:Infinity,[SEED]:Infinity,[WOOD]:Infinity,[HEATER]:Infinity,[WALL]:Infinity},
+  build(){floor();},check(){return {p:Object.keys(found).length/DEX.length,done:false,txt:"已發現 "+Object.keys(found).length+" / "+DEX.length+" 種反應"};}};
+
+const record={}; // id -> {pred, used, done}
+let mission=null, left={}, sel=null, paused=true, finished=false, okStreak=0, brush=1, failShown=false;
+
+// ===== 畫面 =====
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id));window.scrollTo(0,0);}
+let toastT=0;
+function showToast(html){const t=$("toast");t.innerHTML=html;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),3200);}
+function modal(html){$("modalBox").innerHTML=html;$("modal").classList.add("on");}
+function closeModal(){$("modal").classList.remove("on");}
+
+function renderMenu(){
+  const L=$("mlist");L.innerHTML="";
+  MISSIONS.forEach((m,k)=>{
+    const r=record[m.id];
+    const d=document.createElement("div");d.className="mitem";
+    d.innerHTML="<div><b>"+m.title+"</b><div class='muted' style='font-size:.85rem'>"+m.goal+"</div></div>";
+    const right=document.createElement("div");right.className="row";
+    right.innerHTML=r&&r.done?"<span class='tag ok'>完成</span>":"";
+    const b=document.createElement("button");b.textContent=r&&r.done?"再玩":"開始";b.className=r&&r.done?"":"primary";
+    b.onclick=()=>startMission(m);
+    right.appendChild(b);d.appendChild(right);L.appendChild(d);
+  });
+  updDexCount();
+}
+
+function startMission(m){
+  mission=m; mission.disc=[]; mission.started=false;
+  if(m.id===0){ steamMax=900; loadMission(); show("sPlay"); paused=false; updPause(); return; }
+  const r=record[m.id]||(record[m.id]={});
+  const p=m.predict;
+  let html="<h2>"+m.title+"</h2><p>"+m.story+"</p><div class='card' style='margin:8px 0'><b>先猜猜看：</b>"+p.q+"<div class='opts'>";
+  p.o.forEach((o,k)=>html+="<button data-k='"+k+"'>"+"ABC"[k]+"　"+o+"</button>");
+  html+="</div></div><p class='muted' style='font-size:.85rem'>猜錯沒關係，等一下用實驗來驗證。</p>";
+  modal(html);
+  $("modalBox").querySelectorAll(".opts button").forEach(b=>b.onclick=()=>{
+    r.pred=+b.dataset.k; closeModal(); loadMission(); show("sPlay"); paused=false; updPause();
+    showToast("任務開始：<b>"+m.goal+"</b>");
+  });
+}
+function loadMission(){
+  const m=mission;
+  steamMax=m.id===4?2000:900;
+  clear(); m.build(); left={};
+  for(const k in m.palette) left[k]=m.palette[k];
+  sel=+Object.keys(m.palette)[0];
+  finished=false; okStreak=0; failShown=false;
+  $("mTitle").textContent=m.title; $("mGoal").textContent="🎯 "+m.goal;
+  $("mStatus").className="status"; $("btnHint").style.display=m.id===0?"none":"";
+  renderPalette(); updStatus();
+}
+function renderPalette(){
+  const P=$("palette");P.innerHTML="";
+  for(const k in mission.palette){
+    const t=+k,inf=INFO[t];
+    const b=document.createElement("button");b.className="pal"+(sel===t?" sel":"");b.dataset.t=t;
+    const c=left[t]===Infinity?"無限":"剩 "+left[t]+" 格";
+    b.innerHTML="<span class='e'>"+inf.e+"</span><span class='n'>"+inf.n+"</span><span class='c'>"+c+"</span>";
+    if(left[t]<=0) b.disabled=true;
+    b.onclick=()=>{sel=t;renderPalette();};
+    P.appendChild(b);
+  }
+}
+function updPalCounts(){
+  $("palette").querySelectorAll(".pal").forEach(b=>{const t=+b.dataset.t;b.querySelector(".c").textContent=left[t]===Infinity?"無限":"剩 "+left[t]+" 格";b.disabled=left[t]<=0;});
+}
+function updPause(){$("btnPause").textContent=paused?"▶ 繼續":"⏸ 暫停";}
+function updStatus(){
+  const r=mission.check();
+  $("mProg").style.width=Math.max(0,Math.min(1,r.p))*100+"%";
+  if(!r.fail) {$("mStatus").textContent=r.txt;$("mStatus").className="status";}
+  return r;
+}
+
+// ===== 畫筆 =====
+const cv=$("lab"),ctx=cv.getContext("2d");
+const off=document.createElement("canvas");off.width=W;off.height=H;const octx=off.getContext("2d");
+const img=octx.createImageData(W,H);
+let drawing=false,lastPt=null;
+function cellAt(ev){const r=cv.getBoundingClientRect();return [Math.floor((ev.clientX-r.left)/r.width*W),Math.floor((ev.clientY-r.top)/r.height*H)];}
+function paint(cx,cy){
+  if(!mission||finished) return;
+  const t=sel; if(t==null||left[t]<=0) return;
+  let placed=0;
+  for(let dy=-brush;dy<=brush;dy++)for(let dx=-brush;dx<=brush;dx++){
+    if(Math.abs(dx)+Math.abs(dy)>brush) continue;
+    const x=cx+dx,y=cy+dy;
+    if(x<0||x>=W||y<0||y>=H||g[y*W+x]!==E) continue;
+    if(left[t]<=0) break;
+    put(x,y,t,t===FIRE?60:0); if(left[t]!==Infinity) left[t]--; placed++;
+  }
+  if(placed){updPalCounts();}
+}
+function line(a,b){const n=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]),1);for(let s=0;s<=n;s++)paint(Math.round(a[0]+(b[0]-a[0])*s/n),Math.round(a[1]+(b[1]-a[1])*s/n));}
+cv.addEventListener("pointerdown",e=>{e.preventDefault();drawing=true;cv.setPointerCapture(e.pointerId);lastPt=cellAt(e);paint(...lastPt);});
+cv.addEventListener("pointermove",e=>{if(!drawing)return;const p=cellAt(e);line(lastPt,p);lastPt=p;});
+["pointerup","pointercancel","pointerleave"].forEach(n=>cv.addEventListener(n,()=>{drawing=false;}));
+
+// ===== 繪圖 =====
+function render(){
+  const d=img.data;
+  for(let i=0;i<N;i++){
+    const t=g[i];let c=COL[t],s=shade[i]-18;
+    if(t===E) s=0;
+    let r=c[0]+s,gg=c[1]+s,b=c[2]+s;
+    if(t===FIRE){const f=rnd()*60;r=255;gg=90+f+(life[i]%20);b=20;}
+    if(t===GLASS&&life[i]>0){r+=life[i]*20;gg-=life[i]*10;}
+    if(t===WATER&&life[i]===1){gg+=20;b-=20;}
+    if(t===STEAM){const a=Math.max(.25,1-life[i]/steamMax);r=22+(c[0]-22)*a;gg=26+(c[1]-26)*a;b=38+(c[2]-38)*a;}
+    const o=i*4;d[o]=r;d[o+1]=gg;d[o+2]=b;d[o+3]=255;
+  }
+  octx.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(off,0,0,W*S,H*S);
+  if(mission&&mission.zone){const z=mission.zone;ctx.save();ctx.setLineDash([6,5]);ctx.strokeStyle="#ffd34d";ctx.lineWidth=2;ctx.strokeRect(z[0]*S-1,z[1]*S-1,(z[2]-z[0]+1)*S+2,(z[3]-z[1]+1)*S+2);ctx.restore();}
+  if(paused&&mission&&!finished){ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillRect(0,0,W*S,H*S);ctx.fillStyle="#fff";ctx.font="bold 28px sans-serif";ctx.textAlign="center";ctx.fillText("暫停中",W*S/2,H*S/2);}
+}
+
+// ===== 主迴圈 =====
+let acc=0,lastT=0;
+function tick(){
+  if(!mission||paused||finished) return;
+  step();
+  if(frame%8===0){
+    const r=updStatus();
+    if(r.fail&&!failShown){failShown=true;finished=true;$("mStatus").textContent=r.txt+" 火燒得太快了，按「重來」再試一次。";$("mStatus").className="status bad";}
+    else if(r.done){okStreak++; if(okStreak>=4&&mission.id!==0) win(); } else okStreak=0;
+  }
+}
+function loop(t){
+  const dt=Math.min(100,t-(lastT||t));lastT=t;acc+=dt;
+  let n=0; while(acc>=16.6&&n<4){tick();acc-=16.6;n++;}
+  if(n===4) acc=0;
+  render(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function win(){
+  finished=true;
+  const m=mission,r=record[m.id];r.done=true;
+  let used=0;for(const k in m.palette)used+=m.palette[k]-left[k];r.used=used;
+  const p=m.predict, right=r.pred===p.a;
+  let html="<h2>✅ 完成！"+m.title.split("｜")[1]+"</h2>";
+  html+="<p>這次用了 <b>"+used+"</b> 格材料。</p>";
+  html+="<div class='card' style='margin:8px 0'><b>你一開始猜：</b>"+p.o[r.pred]+"<br><b>實驗結果：</b>"+p.o[p.a]+"<br>"+(right?"你的預測和實驗結果一樣。":"結果和你猜的不一樣，這就是做實驗的意思：用看到的證據修正想法。")+"</div>";
+  if(m.disc.length){html+="<p><b>這一箱的新發現：</b>"+m.disc.map(k=>DEX.find(x=>x.k===k).t).join("、")+"</p>";}
+  const next=MISSIONS.find(x=>!(record[x.id]&&record[x.id].done));
+  html+="<div class='row' style='margin-top:10px'>";
+  html+=next?"<button class='primary' id='mNext'>下一箱</button>":"<button class='primary' id='mEnd'>看總結</button>";
+  html+="<button id='mMenu'>回任務箱</button></div>";
+  modal(html);
+  if($("mNext")) $("mNext").onclick=()=>{closeModal();startMission(next);};
+  if($("mEnd")) $("mEnd").onclick=()=>{closeModal();showEnd();};
+  $("mMenu").onclick=()=>{closeModal();renderMenu();show("sMenu");};
+}
+function showEnd(){
+  let html="<table class='res'><tr><th>任務</th><th>你的預測</th><th>材料</th></tr>";
+  MISSIONS.forEach(m=>{const r=record[m.id]||{};html+="<tr><td>"+m.title.split("｜")[1]+"</td><td>"+(r.pred===m.predict.a?"✔ 猜對":"✎ 修正了想法")+"</td><td>"+(r.used??"-")+" 格</td></tr>";});
+  html+="</table><p style='margin-bottom:0'>發現圖鑑：<b>"+Object.keys(found).length+" / "+DEX.length+"</b> 種反應"+(Object.keys(found).length<DEX.length?"。還沒找到的，可以去自由實驗室試試。":"，全部找到了。")+"</p>";
+  $("endSummary").innerHTML=html; show("sEnd");
+}
+function showDex(){
+  let html="<h2>📖 發現圖鑑 "+Object.keys(found).length+"/"+DEX.length+"</h2><div class='dex'>";
+  DEX.forEach(c=>{html+=found[c.k]?"<div class='dexc'><b>"+c.t+"</b>"+c.d+"<div class='muted' style='margin-top:4px'>"+c.q+"</div></div>":"<div class='dexc lock'><b>❔ 還沒發現</b>試著讓不同的東西碰在一起。</div>";});
+  html+="</div><div class='row' style='margin-top:12px'><button class='primary' id='dexClose'>關閉</button></div>";
+  const wasPaused=paused; paused=true; updPause();
+  modal(html); $("dexClose").onclick=()=>{closeModal();paused=wasPaused;updPause();};
+}
+
+// ===== 按鈕 =====
+$("btnBegin").onclick=()=>{renderMenu();show("sMenu");startMission(MISSIONS[0]);};
+$("btnFreeStart").onclick=()=>startMission(FREE);
+$("btnFree").onclick=()=>startMission(FREE);
+$("btnEndFree").onclick=()=>startMission(FREE);
+$("btnEndMenu").onclick=()=>{renderMenu();show("sMenu");};
+$("btnHome").onclick=()=>show("sStart");
+$("btnBack").onclick=()=>{paused=true;updPause();renderMenu();show("sMenu");};
+$("btnDex1").onclick=showDex;$("btnDex2").onclick=showDex;
+$("btnPause").onclick=()=>{if(finished)return;paused=!paused;updPause();};
+$("btnReset").onclick=()=>{loadMission();paused=false;updPause();};
+$("btnHint").onclick=()=>{if(mission&&mission.hint) showToast("💡 "+mission.hint);};
+const BR=[[0,"小"],[1,"中"],[2,"大"]];
+$("btnBrush").onclick=()=>{const k=(BR.findIndex(b=>b[0]===brush)+1)%3;brush=BR[k][0];$("btnBrush").textContent="筆刷："+BR[k][1];};
+$("modal").addEventListener("click",e=>{if(e.target.id==="modal"&&!$("modalBox").querySelector(".opts"))closeModal();});
+updDexCount();
+
+// 測試用
+window.__GAME={step,put,get,count,found,record,MISSIONS,FREE,startMission,loadMission,
+  setSel:t=>{sel=t;}, paint, get mission(){return mission}, get finished(){return finished}, get left(){return left},
+  tick, T:{E,WALL,SAND,WATER,FIRE,WOOD,STEAM,ICE,GLASS,SEED,PLANT,SALT,HEATER,GOLD}, W,H,
+  setPaused:v=>{paused=v;}, setBrush:v=>{brush=v;}};
+})();
+</script>
+</body>
+</html>
