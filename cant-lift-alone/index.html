@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>一個人搬不動</title>
+<style>
+:root{
+  --bg:#f6f1e7; --panel:#fffdf8; --ink:#2f2a24; --muted:#7a6f62; --line:#e3d8c6;
+  --accent:#e07a3f; --accent2:#3f8f7a; --warn:#c2453a; --chip:#f1e7d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1f1c19; --panel:#2a2622; --ink:#f1ebe2; --muted:#b5a996; --line:#433c34;
+    --accent:#f0915a; --accent2:#5fb39c; --warn:#e06a5f; --chip:#38322b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1f1c19; --panel:#2a2622; --ink:#f1ebe2; --muted:#b5a996; --line:#433c34;
+  --accent:#f0915a; --accent2:#5fb39c; --warn:#e06a5f; --chip:#38322b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+#app{max-width:860px;margin:0 auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px;min-height:100%}
+#hud{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px}
+.chip{background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.chip.done{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+#pow{display:flex;align-items:center;gap:6px}
+#powbar{width:90px;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+#powfill{height:100%;background:var(--accent);transition:width .25s}
+#helperChip{display:none}
+#wrap{position:relative;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#000}
+canvas{display:block;width:100%;touch-action:none}
+#hint{font-size:13px;color:var(--muted);min-height:18px}
+#controls{display:flex;justify-content:space-between;align-items:center;gap:10px;user-select:none}
+.dpad{display:grid;grid-template-columns:52px 52px 52px;grid-template-rows:52px 52px;gap:4px}
+.dpad button,.act button{font-size:20px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);touch-action:none}
+.dpad button:active,.act button:active{background:var(--chip)}
+.act{display:flex;gap:8px}
+.act button{height:56px;padding:0 14px;font-size:15px}
+#btnTalk{background:var(--accent);color:#fff;border-color:var(--accent);min-width:84px}
+/* dialog */
+#dlg.top{bottom:auto;top:8px}
+#dlg{position:absolute;left:8px;right:8px;bottom:8px;top:auto;background:var(--panel);color:var(--ink);border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:none;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+#dlgName{font-weight:700;color:var(--accent);font-size:14px;margin-bottom:2px}
+#dlgText{font-size:16px;line-height:1.55;min-height:2.6em}
+#dlgMore{text-align:right;font-size:12px;color:var(--muted)}
+#dlgChoices{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+#dlgChoices button{text-align:left;font-size:15px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;line-height:1.4}
+#dlgChoices button:hover{border-color:var(--accent)}
+/* overlay screens */
+.screen{position:fixed;inset:0;background:var(--bg);display:none;overflow:auto;z-index:20}
+.screen .inner{max-width:620px;margin:0 auto;padding:28px 18px 40px}
+.screen h1{font-size:30px;margin:6px 0 4px}
+.screen h2{font-size:19px;margin:22px 0 8px}
+.screen p{line-height:1.7;margin:8px 0}
+.big{display:inline-block;margin-top:14px;font-size:18px;padding:12px 26px;border-radius:12px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+.ghost{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.sign{font-size:13px;color:var(--muted);margin-top:26px}
+.stat{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:15px}
+.stat div:nth-child(even){text-align:right;font-weight:700}
+.quote{border-left:4px solid var(--accent2);padding:4px 10px;margin:6px 0;background:var(--chip);border-radius:0 8px 8px 0;font-size:15px}
+.quote.v{border-left-color:var(--muted)}
+.opts button{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.opts button.sel{border-color:var(--accent);background:var(--chip)}
+#toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(30,25,20,.85);color:#fff;padding:6px 12px;border-radius:999px;font-size:14px;display:none;white-space:nowrap}
+kbd{background:var(--chip);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:13px}
+@media (max-width:420px){ .dpad{grid-template-columns:46px 46px 46px;grid-template-rows:46px 46px} .act button{height:50px;padding:0 10px} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <span class="chip" id="t_cup">📦 紙杯箱</span>
+    <span class="chip" id="t_drink">🧃 飲料箱</span>
+    <span class="chip" id="t_ice">🧊 冰桶</span>
+    <span class="chip" id="t_sign">🪧 招牌</span>
+    <span class="chip" id="pow">力氣 <span id="powbar"><span id="powfill" style="width:100%"></span></span> <b id="powNum">10</b></span>
+    <span class="chip" id="helperChip"></span>
+  </div>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
+    <div id="dlg">
+      <div id="dlgName"></div>
+      <div id="dlgText"></div>
+      <div id="dlgChoices"></div>
+      <div id="dlgMore">點一下或按空白鍵繼續 ▸</div>
+    </div>
+  </div>
+  <div id="hint">方向鍵 / WASD 移動，走到東西旁邊按 <kbd>空白鍵</kbd> 查看或說話。走進箱子就能推。</div>
+  <div id="controls">
+    <div class="dpad">
+      <span></span><button data-d="up" aria-label="上">▲</button><span></span>
+      <button data-d="left" aria-label="左">◀</button><button data-d="down" aria-label="下">▼</button><button data-d="right" aria-label="右">▶</button>
+    </div>
+    <div class="act">
+      <button id="btnReset" title="把還沒到攤位的箱子放回原位">↺ 箱子歸位</button>
+      <button id="btnTalk">查看</button>
+    </div>
+  </div>
+</div>
+
+<!-- 開始畫面 -->
+<div class="screen" id="scStart" style="display:block">
+  <div class="inner">
+    <div style="font-size:54px">📦🧒📦</div>
+    <h1>一個人搬不動</h1>
+    <p style="color:var(--muted)">園遊會開場前，你們班的攤位還差最後幾件事。</p>
+    <div class="card">
+      <p>紙杯、飲料、冰桶還在教室，招牌也還沒掛。林老師請你負責把它們弄到攤位。</p>
+      <p>紙杯箱很輕，自己推得動。另外兩箱嘛……試試看就知道了。</p>
+    </div>
+    <div class="card" style="font-size:14px;line-height:1.7">
+      <b>怎麼玩</b><br>
+      ・方向鍵／WASD，或下方按鈕移動。<br>
+      ・走向箱子就是推。箱子卡在角落時，按「↺ 箱子歸位」。<br>
+      ・走到人或東西旁邊，按空白鍵或「查看」。<br>
+      ・大約 10 分鐘可以玩完。
+    </div>
+    <button class="big" id="btnStart">開始</button>
+    <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>
+  </div>
+</div>
+
+<!-- 結局畫面 -->
+<div class="screen" id="scEnd"><div class="inner" id="endInner"></div></div>
+
+<script>
+(()=>{
+"use strict";
+// ================= 地圖 =================
+// # 牆  . 地板  t 桌子  p 柱子  b 樹叢(可搜) w 帆布  h 籃框  l 梯子(裝飾)  f 花盆
+const MAP_SRC = [
+"##########################",
+"#........#...............#",
+"#........#............h..#",
+"#.........................",
+"#........#...............#",
+"#........#...............#",
+"#........#...............#",
+"#####.############..######",
+"#........................#",
+"#........b...............#",
+"#b.......................#",
+"#....p......p............#",
+"#b.......................#",
+"#.b......................#",
+"#......................w.#",
+"#.........tttt.....tttt..#",
+"#l.......................#",
+"##########################",
+];
+const W = 26, H = MAP_SRC.length;
+const MAP = MAP_SRC.map(r => r.padEnd(W,'#').split(''));
+MAP[3][25]='#';
+function zone(x,y){
+  if(y<=6 && x<=8) return 'class';
+  if(y<=6 && x>=10) return 'field';
+  return 'yard';
+}
+const TARGETS = [[20,14],[21,14],[22,14]];
+const isTarget = (x,y)=>TARGETS.some(t=>t[0]===x&&t[1]===y);
+const BUSHES = {"9,9":false,"1,10":false,"1,12":true,"2,13":false}; // true = 零錢盒在這
+
+// ================= 狀態 =================
+const CRATES0 = [
+  {id:'cup',   name:'紙杯箱', emo:'📦', heavy:false, x:2, y:5},
+  {id:'drink', name:'飲料箱', emo:'🧃', heavy:true,  x:7, y:4},
+  {id:'ice',   name:'冰桶',   emo:'🧊', heavy:true,  x:3, y:2},
+];
+const NPC0 = {
+  teacher:{name:'林老師', emo:'👩‍🏫', x:18,y:16},
+  an:     {name:'小安',   emo:'👧',   x:24,y:12},
+  kai:    {name:'阿凱',   emo:'🧑',   x:20,y:3},
+  mei:    {name:'美美學姊',emo:'👩',  x:11,y:16},
+  dou:    {name:'小豆',   emo:'👦',   x:7, y:11},
+  chen:   {name:'陳伯伯', emo:'👴',   x:2, y:16},
+};
+const OBJ = {sign:{x:8,y:1,emo:'🪧'}};
+let S;
+function newState(){
+  return {
+    p:{x:17,y:16,dir:'up'},
+    crates: CRATES0.map(c=>({...c, sx:c.x, sy:c.y, done:false})),
+    npc: JSON.parse(JSON.stringify(NPC0)),
+    power:10, helper:null, trail:[],
+    used:{an:false,kai:false,dou:false},
+    signDone:false, signAsked:false, chenAtStall:false,
+    seenSign:false, coinFound:false, coinReturned:false, douMet:false,
+    asks:[],            // {who, kind:'vague'|'specific', line}
+    rejected:false, rejectThought:null, askedAfterReject:false,
+    aloneTries:0, aloneChoice:[], resets:0, steps:0, pushes:0,
+    chairIdea:false, started:false, ended:false, endingB:false, reflect:null,
+  };
+}
+S = newState();
+
+// ================= 畫面 =================
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const T = 32;
+let vw=0, vh=0, dpr=1;
+function resize(){
+  const wrap = document.getElementById('wrap');
+  const availW = wrap.clientWidth;
+  const availH = Math.max(220, window.innerHeight - 260);
+  vw = Math.min(availW, W*T);
+  vh = Math.min(availH, H*T, Math.round(vw*(vw<600?1.15:0.72)));
+  dpr = window.devicePixelRatio||1;
+  cv.width = Math.round(vw*dpr); cv.height = Math.round(vh*dpr);
+  cv.style.height = vh+'px';
+}
+window.addEventListener('resize', resize);
+
+const COL = {
+  class:'#e9d9b8', field:'#9fcf8a', yard:'#d8d2c4', wall:'#6b5b4b', wallTop:'#857261',
+  table:'#a8714a', pillar:'#9a958c', target:'#e07a3f', canvas:'#c94f4f'
+};
+function draw(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,vw,vh);
+  let cx = S.p.x*T + T/2 - vw/2, cy = S.p.y*T + T/2 - vh/2;
+  cx = Math.max(0, Math.min(W*T - vw, cx)); cy = Math.max(0, Math.min(H*T - vh, cy));
+  if(W*T<vw) cx = -(vw-W*T)/2;
+  ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c = MAP[y][x], px=x*T, py=y*T, z=zone(x,y);
+    if(c==='#'){ ctx.fillStyle=COL.wall; ctx.fillRect(px,py,T,T); ctx.fillStyle=COL.wallTop; ctx.fillRect(px,py,T,T-6); continue; }
+    ctx.fillStyle = COL[z]; ctx.fillRect(px,py,T,T);
+    ctx.strokeStyle='rgba(0,0,0,.05)'; ctx.strokeRect(px+.5,py+.5,T-1,T-1);
+    if(c==='t'){ ctx.fillStyle=COL.table; ctx.fillRect(px+1,py+6,T-2,T-10); ctx.fillStyle='#f3e3c8'; ctx.fillRect(px+1,py+6,T-2,5); }
+    if(c==='p'){ ctx.fillStyle=COL.pillar; ctx.fillRect(px+5,py+2,T-10,T-4); ctx.fillStyle='#b8b3aa'; ctx.fillRect(px+5,py+2,T-10,5); }
+    if(c==='w'){ ctx.fillStyle=COL.canvas; ctx.fillRect(px+2,py,T-4,T); ctx.fillStyle='#fff'; ctx.fillRect(px+2,py+8,T-4,4); }
+    if(c==='b'){ emoji('🌳',px,py,26); }
+    if(c==='h'){ emoji('🏀',px,py,22); }
+    if(c==='l'){ emoji('🪜',px,py,24); }
+  }
+  // 區域名稱
+  ctx.font='bold 12px sans-serif'; ctx.fillStyle='rgba(60,45,30,.55)';
+  ctx.fillText('五年二班教室', 4.5*T, 0.55*T+T*6.1);
+  ctx.fillText('操場', 17*T, 6.5*T);
+  ctx.fillText('中庭', 6*T, 8.5*T);
+  ctx.fillText('美美班 · 氣球攤', 12*T, 14.5*T);
+  ctx.fillText('我們的攤位', 20.5*T, 16.55*T);
+  ctx.fillText('儲藏室', 2.5*T, 15.5*T);
+  // 招牌鉤子
+  ctx.fillStyle='#444'; ctx.fillRect(19*T+4, 15*T+2, 4*T-8, 2);
+  if(S.signDone){ ctx.fillStyle='#fff6d6'; ctx.fillRect(19*T+10,15*T-2,4*T-20,12); ctx.font='bold 10px sans-serif'; ctx.fillStyle='#b4502a'; ctx.fillText('五二 冰涼飲料',21*T,15*T+4); }
+  // 目標格
+  TARGETS.forEach(([x,y])=>{
+    const occ = S.crates.some(c=>c.x===x&&c.y===y);
+    ctx.setLineDash([4,3]); ctx.strokeStyle=occ?COL.target:'rgba(224,122,63,.9)'; ctx.lineWidth=2;
+    ctx.strokeRect(x*T+3,y*T+3,T-6,T-6); ctx.setLineDash([]); ctx.lineWidth=1;
+  });
+  // 物件
+  if(!S.seenSign || !S.signAsked){ emoji(OBJ.sign.emo, OBJ.sign.x*T, OBJ.sign.y*T, 24); }
+  // 箱子
+  S.crates.forEach(c=>{
+    const px=c.x*T, py=c.y*T;
+    ctx.fillStyle = c.heavy ? '#8a5a33' : '#c9945c';
+    ctx.fillRect(px+2,py+3,T-4,T-5);
+    ctx.strokeStyle='#5a3a1e'; ctx.strokeRect(px+2.5,py+3.5,T-5,T-6);
+    emoji(c.emo,px,py-1,18);
+    if(c.heavy){ ctx.fillStyle='#c2453a'; ctx.font='bold 9px sans-serif'; ctx.fillText('重',px+T-7,py+8); }
+    if(c.done){ ctx.fillStyle='#3f8f7a'; ctx.font='bold 12px sans-serif'; ctx.fillText('✓',px+7,py+8); }
+  });
+  // NPC
+  for(const k in S.npc){
+    const n=S.npc[k]; if(n.hidden) continue;
+    emoji(n.emo,n.x*T,n.y*T,24);
+    ctx.font='11px sans-serif'; ctx.fillStyle='rgba(30,20,10,.8)'; ctx.fillText(n.name,n.x*T+T/2,n.y*T-3);
+    if(hasNews(k)){ ctx.font='bold 14px sans-serif'; ctx.fillStyle='#e07a3f'; ctx.fillText('！',n.x*T+T-4,n.y*T+4); }
+  }
+  // 幫手
+  if(S.helper){
+    const h = S.trail[0] || {x:S.p.x,y:S.p.y};
+    const n=S.npc[S.helper]; emoji(n.emo,h.x*T,h.y*T,22);
+  }
+  // 玩家
+  emoji('🧒',S.p.x*T,S.p.y*T,26);
+  const fd = DIRS[S.p.dir]; ctx.fillStyle='#e07a3f';
+  ctx.beginPath(); ctx.arc(S.p.x*T+T/2+fd[0]*13, S.p.y*T+T/2+fd[1]*13, 3, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function emoji(e,px,py,size){ ctx.font=size+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.fillText(e,px+T/2,py+T/2+1); }
+function hasNews(k){
+  if(k==='teacher') return allDone();
+  if(k==='dou') return !S.douMet || (S.coinFound && !S.coinReturned);
+  if(k==='chen') return S.chenAtStall && !S.signDone;
+  return false;
+}
+function loop(){ draw(); requestAnimationFrame(loop); }
+
+// ================= HUD =================
+function hud(){
+  const set=(id,on)=>document.getElementById(id).classList.toggle('done',on);
+  S.crates.forEach(c=>set('t_'+c.id,c.done));
+  set('t_sign',S.signDone);
+  document.getElementById('powfill').style.width=(S.power*10)+'%';
+  document.getElementById('powNum').textContent=S.power;
+  const hc=document.getElementById('helperChip');
+  if(S.helper){ hc.style.display='inline-block'; hc.textContent='🤝 '+S.npc[S.helper].name+' 跟著你'; } else hc.style.display='none';
+}
+let toastT=0;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.display='none',1800); }
+
+// ================= 對話 =================
+const dlg=document.getElementById('dlg'), dName=document.getElementById('dlgName'), dText=document.getElementById('dlgText'), dCh=document.getElementById('dlgChoices'), dMore=document.getElementById('dlgMore');
+let busy=false, advance=null;
+function placeDlg(){ let cy=S.p.y*T+T/2-vh/2; cy=Math.max(0,Math.min(H*T-vh,cy)); const sy=S.p.y*T+T/2-cy; dlg.classList.toggle('top', sy>vh*0.55); }
+function say(name,text){
+  return new Promise(res=>{
+    placeDlg(); dlg.style.display='block'; dName.textContent=name; dText.textContent=text; dCh.innerHTML=''; dMore.style.display='block';
+    advance=()=>{ advance=null; res(); };
+  });
+}
+function choose(name,text,opts){ // opts: [{t, v}]
+  return new Promise(res=>{
+    placeDlg(); dlg.style.display='block'; dName.textContent=name; dText.textContent=text; dCh.innerHTML=''; dMore.style.display='none'; advance=null;
+    opts.forEach((o,i)=>{ const b=document.createElement('button'); b.textContent=(i+1)+'. '+o.t; b.onclick=(e)=>{e.stopPropagation(); dCh.innerHTML=''; curChoice=null; res(o.v);}; dCh.appendChild(b); });
+    curChoice=opts.map(o=>o.v); curRes=res;
+  });
+}
+let curChoice=null, curRes=null;
+function pickChoice(i){ if(curChoice && curChoice[i]!==undefined){ const v=curChoice[i]; curChoice=null; dCh.innerHTML=''; curRes(v);} }
+function closeDlg(){ dlg.style.display='none'; }
+dlg.addEventListener('click',()=>{ if(advance) advance(); });
+async function scene(fn){ if(busy) return; busy=true; try{ await fn(); } finally { closeDlg(); busy=false; hud(); checkEndB(); } }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+// ================= 移動與推箱 =================
+const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+function solid(x,y){ const c=MAP[y]&&MAP[y][x]; return c===undefined||c==='#'||c==='t'||c==='p'||c==='b'||c==='w'||c==='h'||c==='l'; }
+function npcAt(x,y){ for(const k in S.npc){const n=S.npc[k]; if(!n.hidden&&n.x===x&&n.y===y) return k;} return null; }
+function crateAt(x,y){ return S.crates.find(c=>c.x===x&&c.y===y); }
+function objAt(x,y){ if((!S.seenSign||!S.signAsked)&&OBJ.sign.x===x&&OBJ.sign.y===y) return 'sign'; return null; }
+function blocked(x,y){ return solid(x,y)||npcAt(x,y)||objAt(x,y); }
+function move(d){
+  if(busy||!S.started||S.ended) return;
+  S.p.dir=d; const [dx,dy]=DIRS[d]; const nx=S.p.x+dx, ny=S.p.y+dy;
+  const c=crateAt(nx,ny);
+  if(c){
+    if(c.done){ toast('這箱已經放好了'); return; }
+    const bx=nx+dx, by=ny+dy;
+    if(blocked(bx,by)||crateAt(bx,by)){ toast('推不過去，前面卡住了'); return; }
+    if(c.heavy && !S.helper){ heavyAlone(c); return; }
+    c.x=bx; c.y=by; S.pushes++;
+    stepTo(nx,ny);
+    if(isTarget(c.x,c.y) && !c.done){ c.done=true; onDelivered(c); }
+    hud(); return;
+  }
+  if(blocked(nx,ny)) return;
+  stepTo(nx,ny);
+}
+function stepTo(x,y){ S.trail.unshift({x:S.p.x,y:S.p.y}); S.trail.length=Math.min(S.trail.length,3); S.p.x=x; S.p.y=y; S.steps++; }
+function heavyAlone(c){
+  scene(async()=>{
+    S.aloneTries++; S.power=Math.max(0,S.power-2); hud();
+    if(S.power<=0) return;
+    const first = S.aloneTries===1;
+    const v = await choose('你', first ? `嘿——！${c.name}動也不動，手好痠。（力氣 −2）` : `${c.name}還是不動。（力氣 −2）`, shuffle([
+      {t:'再用力一次，應該快動了', v:'again'},
+      {t:'去找個人一起推', v:'ask'},
+      {t:'先去弄別的，等一下再說', v:'later'},
+    ]));
+    S.aloneChoice.push(v);
+    if(v==='again') await say('你','（深呼吸，準備再推一次。）');
+    if(v==='ask') await say('你','誰現在比較有空呢？操場、中庭、攤位那邊好像都有人。');
+    if(v==='later') await say('你','好，先做做得到的。');
+  });
+}
+function onDelivered(c){
+  toast(c.emo+' '+c.name+' 放好了！');
+  if(c.heavy && S.helper){
+    const k=S.helper, n=S.npc[k];
+    scene(async()=>{
+      await say(n.name, LINES_DONE[k]);
+      S.used[k]=true; S.helper=null; n.hidden=false; hud();
+    });
+  } else if(c.id==='cup'){
+    scene(async()=>{ await say('小安','紙杯來了！我先把杯子排好……好了，現在我手空了。'); });
+  }
+}
+const LINES_DONE={ kai:'呼，好重。我回去練球囉，下一箱找別人吧！', an:'剛好推到位！我回去顧攤位。', dou:'我們推到了！我力氣變大了耶！' };
+function resetCrates(){
+  if(busy||!S.started||S.ended) return;
+  let moved=0;
+  S.crates.forEach(c=>{ if(c.done) return; if(c.x!==c.sx||c.y!==c.sy){ c.x=c.sx; c.y=c.sy; moved++; } });
+  if(crateAt(S.p.x,S.p.y)){ S.p.x=5; S.p.y=8; S.trail=[]; }
+  if(moved){ S.resets++; toast('還沒放好的箱子回到教室了'); } else toast('箱子都在原位');
+}
+
+// ================= 互動 =================
+function facing(){ const [dx,dy]=DIRS[S.p.dir]; return [S.p.x+dx,S.p.y+dy]; }
+function nearby(){
+  const [fx,fy]=facing();
+  const order=[[fx,fy],[S.p.x,S.p.y-1],[S.p.x,S.p.y+1],[S.p.x-1,S.p.y],[S.p.x+1,S.p.y]];
+  for(const [x,y] of order){
+    const k=npcAt(x,y); if(k) return {type:'npc',k};
+    const o=objAt(x,y); if(o) return {type:'obj',k:o};
+    if(MAP[y]&&MAP[y][x]==='b') return {type:'bush',k:x+','+y};
+    if(MAP[y]&&MAP[y][x]==='l') return {type:'ladder'};
+    if(MAP[y]&&MAP[y][x]==='t' && x>=19) return {type:'stall'};
+  }
+  return null;
+}
+function interact(){
+  if(busy){ if(advance) advance(); return; }
+  if(!S.started||S.ended) return;
+  const t=nearby(); if(!t){ toast('旁邊沒有可以查看的東西'); return; }
+  if(t.type==='npc') return TALK[t.k]();
+  if(t.type==='obj') return scene(signObj);
+  if(t.type==='bush') return scene(()=>bush(t.k));
+  if(t.type==='ladder') return scene(async()=>{ await say('你','一把鋁梯，比我還高。'); });
+  if(t.type==='stall') return scene(async()=>{ await say('你', S.signDone?'招牌掛好了，看起來像真的店了。':'攤位上方有兩個鉤子，招牌要掛在那裡。好高。'); });
+}
+async function signObj(){
+  S.seenSign=true;
+  await say('你','這是我們班的招牌「五二 冰涼飲料」。要掛在攤位上方的鉤子……');
+  await say('你','我踮腳伸手也差一大截。');
+}
+async function bush(k){
+  if(!S.douMet){ await say('你','樹叢裡都是落葉。'); return; }
+  if(S.coinFound){ await say('你','這裡已經找過了。'); return; }
+  if(BUSHES[k]){ S.coinFound=true; await say('你','葉子底下有個鐵盒子，上面貼著「三年一班 找錢用」。找到了！'); }
+  else { BUSHES[k]='searched'; await say('你','撥開葉子……只有一隻西瓜蟲。'); }
+}
+
+// 求助的共用流程：回傳 'yes' | 'no'
+async function askFlow(k, who, opener){
+  const specificLine = '飲料箱跟冰桶很重，我一個人推不動。可以幫我一起推一箱到攤位嗎？大概三分鐘。';
+  const vagueLine = '欸，你可以幫我一下嗎？';
+  let triedVague=false;
+  while(true){
+    const opts=[{t:specificLine,v:'specific'},{t:'沒事，我只是路過。',v:'none'}];
+    if(!triedVague) opts.push({t:vagueLine,v:'vague'});
+    const v = await choose('你', opener, shuffle(opts));
+    if(v==='none'){ await say(who, '喔，好。'); return 'no'; }
+    S.asks.push({who, kind:v, line: v==='specific'?specificLine:vagueLine});
+    if(S.rejected) S.askedAfterReject=true;
+    if(v==='vague'){
+      triedVague=true;
+      await say(who, VAGUE_REPLY[k]);
+      opener='（要怎麼說比較清楚？）';
+      continue;
+    }
+    return 'yes';
+  }
+}
+const VAGUE_REPLY={
+  kai:'幫什麼？我在投籃耶，你要我丟球給你嗎？',
+  an:'幫什麼？你要說清楚我才知道要帶什麼過去啊。',
+  dou:'要幫什麼？我只有三年級喔……',
+  mei:'嗯？什麼事？',
+  chen:'幫什麼忙呀？慢慢講。',
+};
+function heavyLeft(){ return S.crates.some(c=>c.heavy&&!c.done); }
+function busyHelper(who){ return say(who, '你不是已經有人跟著你了嗎？先把那箱推完吧！'); }
+
+const TALK={
+  teacher:()=>scene(async()=>{
+    if(allDone()){ await say('林老師','我看看……紙杯、飲料、冰桶都到了，招牌也掛好了。'); await say('林老師','來，坐下來喘口氣。我想問你一件事。'); return endingA(); }
+    await say('林老師','還沒好也沒關係，還有時間。');
+    const left=[]; S.crates.forEach(c=>{if(!c.done)left.push(c.name);}); if(!S.signDone) left.push('招牌');
+    await say('林老師','還差：'+left.join('、')+'。三個箱子推到攤位前面的橘色框框裡就可以了。');
+    if(S.aloneTries>0 && !S.asks.length) await say('林老師','飲料箱推不動嗎？那一箱我早上也是兩個人才搬上樓的。');
+  }),
+  an:()=>scene(async()=>{
+    const n='小安';
+    if(S.helper==='an') return say(n,'我在你後面，走吧！');
+    if(S.used.an) return say(n,'我在顧攤位，紙杯排得很整齊吧！');
+    const cup=S.crates[0];
+    if(!cup.done){
+      await say(n,'我在擺桌巾跟價目表，手好忙。');
+      await say(n,'紙杯箱可以先推過來嗎？杯子擺好我就有空了。');
+      return;
+    }
+    if(!heavyLeft()) return say(n,'剩招牌了吧？那個要大人爬梯子。');
+    if(S.helper) return busyHelper(n);
+    const r=await askFlow('an',n,'小安的手空下來了。');
+    if(r==='yes'){ await say(n,'好啊！你在前面推，我在旁邊一起出力。'); S.helper='an'; S.npc.an.hidden=true; S.trail=[]; }
+  }),
+  kai:()=>scene(async()=>{
+    const n='阿凱';
+    if(S.helper==='kai') return say(n,'我跟著你啦，走！');
+    if(S.used.kai) return say(n,'我在練球～剛剛那箱真的很重。');
+    if(!heavyLeft()) return say(n,'你們攤位弄好了？等一下我去買飲料。');
+    if(S.helper) return busyHelper(n);
+    const r=await askFlow('kai',n,'阿凱在操場一個人投籃。');
+    if(r==='yes'){ await say(n,'三分鐘喔？OK，我投完這球……進了！走吧。'); S.helper='kai'; S.npc.kai.hidden=true; S.trail=[]; }
+  }),
+  mei:()=>scene(async()=>{
+    const n='美美學姊';
+    if(S.rejected){ await say(n,'氣球快吹完了！你們班加油喔。'); return; }
+    if(!heavyLeft()) return say(n,'你們攤位好像弄好了耶，好快。');
+    if(S.helper) return busyHelper(n);
+    const r=await askFlow('mei',n,'美美學姊在隔壁攤位，桌上一大堆還沒吹的氣球。');
+    if(r!=='yes') return;
+    await say(n,'啊……抱歉耶，我們班的氣球還沒吹完，我現在真的走不開。');
+    S.rejected=true;
+    const v=await choose('你','（心裡冒出一個念頭）',shuffle([
+      {t:'她是不是覺得我很煩？',v:'self'},
+      {t:'她看起來真的很忙。',v:'busy'},
+      {t:'早知道就不要問了。',v:'regret'},
+    ]));
+    S.rejectThought=v;
+    await say(n,'你去操場那邊看看？剛剛好像有人在那裡打球。');
+  }),
+  dou:()=>scene(async()=>{
+    const n='小豆';
+    if(S.helper==='dou') return say(n,'我準備好了！');
+    if(S.used.dou) return say(n,'我們班也開張了！謝謝你幫我找到零錢盒。');
+    if(!S.douMet){
+      S.douMet=true;
+      await say(n,'……我們班的零錢盒不見了。老師叫我拿到攤位，我剛剛在這邊跟同學追來追去……');
+      const v=await choose('你','小豆的眼睛紅紅的。',shuffle([
+        {t:'我幫你找找看。',v:'help'},
+        {t:'我現在要搬東西，有點趕。',v:'busy'},
+      ]));
+      if(v==='help'){ await say(n,'真的嗎？我剛剛在樹叢那邊跑來跑去。'); }
+      else { await say(n,'喔……好。'); await say('你','（他還站在原地看著樹叢。）'); }
+      return;
+    }
+    if(S.coinFound && !S.coinReturned){
+      S.coinReturned=true;
+      await say(n,'是這個！！謝謝你！');
+      await say(n,'你剛剛是不是在推很重的箱子？我力氣不大，但我可以幫你推一次喔！');
+      return;
+    }
+    if(!S.coinReturned) return say(n,'我剛剛在樹叢那邊跑來跑去，會不會掉在那裡……');
+    if(!heavyLeft()) return say(n,'你們都搬完了？好厲害。');
+    if(S.helper) return busyHelper(n);
+    const r=await askFlow('dou',n,'小豆抱著零錢盒，看起來很想幫忙。');
+    if(r==='yes'){ await say(n,'好！我推左邊，你推右邊！'); S.helper='dou'; S.npc.dou.hidden=true; S.trail=[]; }
+  }),
+  chen:()=>scene(async()=>{
+    const n='陳伯伯';
+    if(S.signDone) return say(n,'招牌很正喔！');
+    if(S.chenAtStall) return hangSign();
+    if(S.signAsked) return say(n,'我去攤位等你。');
+    await say(n,'哎呀，小朋友，忙園遊會喔？');
+    let triedVague=false, opener='陳伯伯在儲藏室門口整理梯子。';
+    while(true){
+      const opts=[
+        {t:'伯伯，我們班的招牌要掛在攤位上面的鉤子，我搆不到，可以借梯子嗎？',v:'specific'},
+        {t:'那我搬椅子來，自己站上去掛好了。',v:'chair'},
+        {t:'沒事，只是經過。',v:'none'},
+      ];
+      if(!triedVague) opts.push({t:'伯伯可以幫忙嗎？',v:'vague'});
+      const v=await choose('你',opener,shuffle(opts));
+      if(v==='none'){ await say(n,'好喔，有事再來找我。'); return; }
+      if(v==='chair'){ S.chairIdea=true; await say(n,'欸欸，站椅子上很危險，椅子會滑。爬高的事讓大人來。'); opener='（那要怎麼跟伯伯說？）'; continue; }
+      S.asks.push({who:n,kind:v,line:v==='specific'?opts.find(o=>o.v==='specific').t:'伯伯可以幫忙嗎？'});
+      if(S.rejected) S.askedAfterReject=true;
+      if(v==='vague'){ triedVague=true; await say(n,VAGUE_REPLY.chen); opener='（要怎麼說清楚？）'; continue; }
+      break;
+    }
+    S.signAsked=true; S.seenSign=true;
+    await say(n,'掛招牌喔，沒問題。梯子我來爬，你在下面幫我看有沒有歪。');
+    await say(n,'招牌在你們教室對吧？我順路拿過去，攤位見！');
+    S.npc.chen.x=24; S.npc.chen.y=16; S.chenAtStall=true;
+  }),
+};
+async function hangSign(){
+  const n='陳伯伯';
+  await say(n,'好，我上去了。你站遠一點幫我看——');
+  const tilt = Math.random()<.5?'left':'right';
+  const v1=await choose(n, tilt==='left'?'現在呢？（招牌左邊低、右邊高）':'現在呢？（招牌右邊低、左邊高）', shuffle([
+    {t:'左邊再拉高一點',v:'left'},{t:'右邊再拉高一點',v:'right'},{t:'剛剛好！',v:'ok'}]));
+  if(v1!==tilt){
+    await say(n, v1==='ok'?'真的嗎？我怎麼覺得有點斜……你再看一次。':'咦，這樣更斜了耶，你再看一次。');
+    const v2=await choose(n, tilt==='left'?'（左邊低、右邊高）':'（右邊低、左邊高）', [{t:'左邊再拉高一點',v:'left'},{t:'右邊再拉高一點',v:'right'}]);
+    if(v2!==tilt){ await say(n,'哈哈，我自己從上面看好了。嗯……這樣應該正了。'); }
+  }
+  await say(n,'好，正了！我下來囉。');
+  S.signDone=true; S.npc.chen.x=24; S.npc.chen.y=16;
+  await say(n,'掛好了。下次需要什麼直接講，像剛剛那樣說清楚就好。');
+}
+function allDone(){ return S.crates.every(c=>c.done) && S.signDone; }
+
+// ================= 結局 =================
+function checkEndB(){
+  if(S.power<=0 && !S.ended && !S.endingB){ S.endingB=true; endingB(); }
+}
+function endingB(){
+  const el=document.getElementById('endInner');
+  el.innerHTML=`
+  <div style="font-size:48px">🧒💦</div>
+  <h1>先坐一下</h1>
+  <p>你一直自己推，手臂抖到抬不起來，只好坐在台階上。</p>
+  <div class="card">
+    <p><b>小安</b>跑過來：「你怎麼一個人在這裡？那箱我早上看到是兩個老師一起抬的耶。」</p>
+    <p>你推了 ${S.aloneTries} 次，箱子一格都沒動。</p>
+  </div>
+  <p>坐一下，力氣會回來一點。要再試一次嗎？</p>
+  <button class="big" id="btnRest">休息一下，回去繼續</button>
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>`;
+  show('scEnd');
+  document.getElementById('btnRest').onclick=()=>{ S.power=6; S.endingB=false; hide('scEnd'); hud(); toast('力氣恢復到 6'); };
+}
+function endingA(){
+  S.ended=true;
+  const spec=S.asks.filter(a=>a.kind==='specific'), vague=S.asks.filter(a=>a.kind==='vague');
+  const helpers=Object.keys(S.used).filter(k=>S.used[k]).map(k=>NPC0[k].name);
+  const el=document.getElementById('endInner');
+  let notes=[];
+  if(S.aloneTries>0){
+    notes.push(S.aloneTries>=3
+      ? `你一開始自己推了 ${S.aloneTries} 次。想先靠自己試試看，很正常；試過之後發現推不動，就是該找人的訊號。`
+      : `你自己推過 ${S.aloneTries} 次，發現推不動就換方法了。`);
+  } else notes.push('你沒有硬推重箱子，先找人一起。這樣比較省力，也比較不容易受傷。');
+  if(vague.length) notes.push(`你說「你可以幫我一下嗎？」的時候，對方都反問「幫什麼？」。後來你講清楚是哪一箱、要推到哪裡、大概多久，對方就知道能不能幫。`);
+  else if(spec.length) notes.push('你每次開口都講清楚要幫什麼、推到哪裡、大概多久，對方一聽就知道能不能幫。');
+  if(S.rejected){
+    const th={self:'「她是不是覺得我很煩？」',busy:'「她看起來真的很忙。」',regret:'「早知道就不要問了。」'}[S.rejectThought]||'';
+    notes.push(`美美學姊說不行，原因是她們班的氣球還沒吹完。你當時心裡想的是${th}`+
+      (S.askedAfterReject?'之後你還是去問了別人，事情就推下去了。':'被拒絕之後再開口真的比較難。'));
+  }
+  if(S.coinReturned) notes.push(`你幫小豆找到零錢盒${S.used.dou?'，後來他也回來幫你推了一箱':''}。`);
+  else if(S.douMet) notes.push('小豆的零錢盒後來是他們班老師幫忙找到的。');
+  if(S.chairIdea) notes.push('你本來想自己站椅子掛招牌，被陳伯伯攔下來。爬高、用電、刀子這類事，找大人不是偷懶。');
+
+  el.innerHTML=`
+  <div style="font-size:48px">🪧🧃🧊📦</div>
+  <h1>開張了！</h1>
+  <p>${S.used.kai?'九點的鐘聲響起，第一個客人是阿凱，他說要買一杯「剛剛我自己推的那箱」。':'九點的鐘聲響起，第一個客人是剛練完球的阿凱，一口氣買了兩杯。'}</p>
+  <div class="card">
+    <h2 style="margin-top:0">今天幫你的人</h2>
+    <p>${helpers.length?helpers.join('、')+'，還有陳伯伯。':'陳伯伯。'}</p>
+    <div class="stat">
+      <div>開口找人幫忙</div><div>${S.asks.length} 次</div>
+      <div>　說清楚的</div><div>${spec.length} 次</div>
+      <div>　只說「幫我一下」</div><div>${vague.length} 次</div>
+      <div>自己硬推重箱子</div><div>${S.aloneTries} 次</div>
+      <div>箱子歸位</div><div>${S.resets} 次</div>
+      <div>剩下的力氣</div><div>${S.power} / 10</div>
+    </div>
+  </div>
+  <h2>你開口時說的話</h2>
+  ${S.asks.map(a=>`<div class="quote ${a.kind==='vague'?'v':''}"><b>對${a.who}：</b>${a.line}</div>`).join('')||'<p>（沒有記錄）</p>'}
+  <h2>林老師說</h2>
+  ${notes.map(t=>`<p>${t}</p>`).join('')}
+  <div class="card">
+    <p><b>林老師：</b>「最後問你一個問題，沒有標準答案。下次你需要別人幫忙的時候，哪一步最難？」</p>
+    <div class="opts" id="refl">
+      <button data-v="who">不知道要找誰</button>
+      <button data-v="reject">怕被拒絕</button>
+      <button data-v="should">覺得這種事我應該自己會</button>
+      <button data-v="how">不知道怎麼說</button>
+    </div>
+    <p id="reflOut" style="display:none"></p>
+  </div>
+  <button class="big ghost" id="btnAgain">再玩一次</button>
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>`;
+  show('scEnd');
+  const REFL={
+    who:'今天你是怎麼找到人的？在操場的、手空下來的、剛好被你幫過的。可以先看看誰現在有空。',
+    reject:'被拒絕的那一刻很不舒服。可是美美學姊說不行，是因為她自己也在忙，跟你這個人沒有關係。',
+    should:'飲料箱連老師都是兩個人搬的。「應該自己會」這個想法，有時候會讓人一直硬撐。',
+    how:'可以試試今天的說法：要幫什麼、到哪裡、大概多久。三件事講到，對方就比較好回答。',
+  };
+  document.querySelectorAll('#refl button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#refl button').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+    S.reflect=b.dataset.v; const o=document.getElementById('reflOut'); o.style.display='block'; o.textContent='林老師：「'+REFL[b.dataset.v]+'」';
+  });
+  document.getElementById('btnAgain').onclick=()=>{ location.reload(); };
+}
+function show(id){ document.getElementById(id).style.display='block'; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+
+// ================= 開場 =================
+async function intro(){
+  await scene(async()=>{
+    await say('林老師','來得剛好！再半小時園遊會就開始了。');
+    await say('林老師','紙杯箱、飲料箱、冰桶都還在教室，請你推到攤位前面這三個橘色框框裡。');
+    await say('林老師','還有招牌要掛在攤位上面的鉤子。我要先去開會，有事就找附近的人喔。');
+    await say('你','（教室在左上角。先去看看吧。）');
+  });
+}
+document.getElementById('btnStart').onclick=()=>{ hide('scStart'); S.started=true; resize(); hud(); intro(); };
+
+// ================= 輸入 =================
+const KEY={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+window.addEventListener('keydown',e=>{
+  if(document.getElementById('scStart').style.display==='block'){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); document.getElementById('btnStart').click(); } return; }
+  if(curChoice && /^[1-9]$/.test(e.key)){ pickChoice(+e.key-1); return; }
+  if(KEY[e.key]){ e.preventDefault(); move(KEY[e.key]); return; }
+  if(e.key===' '||e.key==='Enter'){ e.preventDefault(); interact(); }
+  if(e.key==='r'||e.key==='R') resetCrates();
+});
+let holdT=null;
+document.querySelectorAll('.dpad button').forEach(b=>{
+  const d=b.dataset.d;
+  const start=e=>{ e.preventDefault(); move(d); clearInterval(holdT); holdT=setInterval(()=>move(d),170); };
+  const stop=()=>clearInterval(holdT);
+  b.addEventListener('pointerdown',start); b.addEventListener('pointerup',stop); b.addEventListener('pointerleave',stop); b.addEventListener('pointercancel',stop);
+});
+document.getElementById('btnTalk').addEventListener('click',interact);
+document.getElementById('btnReset').addEventListener('click',resetCrates);
+
+resize(); hud(); loop();
+
+// 測試接口
+window.__GAME={ get S(){return S;}, move, interact, resetCrates, pickChoice, adv:()=>advance&&advance(), get busy(){return busy;}, get choices(){return curChoice;}, tp:(x,y,dir)=>{S.p.x=x;S.p.y=y;if(dir)S.p.dir=dir;}, allDone, MAP };
+})();
+</script>
+</body>
+</html>
