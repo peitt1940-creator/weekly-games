@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>一起歪一點</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: 一張平放的平板＝一張木桌。木盤在中間，四邊各一個長按鈕，每個人坐一邊。單一主題（深綠桌布＋木頭），刻意不跟隨深淺色。 */
+:root{
+  --felt:#163a35; --felt2:#0f2b27; --wood:#d9a96a; --wood-d:#8a5a2b; --ink:#f4efe4; --ink-dim:#b9c9c2;
+  --card:#fbf6ec; --card-ink:#2b2118; --card-dim:#6d5c4b; --line:#e3d5bf;
+  --p1:#3b9cff; --p2:#ff9440; --p3:#2ecf8c; --p4:#b48cff; --warn:#ff6b5a;
+  --f-display:"Chiron GoRound TC","jf-openhuninn","Yuanti TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-body:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  --pad:64px; --S:300px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(circle at 50% 40%,var(--felt),var(--felt2));color:var(--ink);font-family:var(--f-body);
+  overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+#table{position:absolute;inset:0;display:grid;place-items:center}
+#grid{display:grid;grid-template-columns:var(--pad) var(--S) var(--pad);grid-template-rows:var(--pad) var(--S) var(--pad);gap:6px}
+.hud{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--ink-dim);text-align:center;line-height:1.3;font-variant-numeric:tabular-nums}
+.hud b{display:block;color:var(--ink);font-size:15px}
+#pauseBtn{background:transparent;border:1px solid #ffffff33;color:var(--ink);border-radius:10px;padding:6px 8px;font:inherit;font-size:12px;cursor:pointer}
+#boardWrap{width:var(--S);height:var(--S);transition:transform .12s ease-out;transform-style:preserve-3d;border-radius:14px;box-shadow:0 18px 40px #0008}
+canvas{display:block;width:100%;height:100%;border-radius:14px}
+.pad{--c:var(--p1);position:relative;border:none;border-radius:14px;background:color-mix(in srgb,var(--c) 22%,#0d1f1c);color:var(--ink);
+  font:inherit;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;overflow:hidden;
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent);touch-action:none}
+.pad.on{background:color-mix(in srgb,var(--c) 70%,#0d1f1c);box-shadow:inset 0 0 0 3px #fff,0 0 18px var(--c)}
+.pad.tired{opacity:.45}
+.pad:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.pad .lab{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;font-size:15px;pointer-events:none}
+.pad .arrow{font-size:20px}
+.pad .sta{position:absolute;left:8px;right:8px;bottom:5px;height:5px;border-radius:3px;background:#ffffff22;pointer-events:none}
+.pad .sta i{display:block;height:100%;border-radius:3px;background:var(--c);width:100%}
+#padN .lab{transform:rotate(180deg)}
+#padW .lab{transform:rotate(90deg)}
+#padE .lab{transform:rotate(-90deg)}
+#padW .sta,#padE .sta{left:auto;right:5px;top:8px;bottom:8px;width:5px;height:auto;display:flex;align-items:flex-end}
+#padW .sta i,#padE .sta i{width:100%}
+#padW .sta{left:5px;right:auto}
+/* overlays */
+.ov{position:fixed;inset:0;background:#06120fcc;display:grid;place-items:center;z-index:20;overflow:auto;
+  padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{background:var(--card);color:var(--card-ink);border-radius:18px;max-width:540px;width:100%;padding:22px 22px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px #000a;touch-action:auto;-webkit-user-select:text;user-select:text}
+.card h1,.card h2{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:.02em}
+.card h1{font-size:34px}
+.card h2{font-size:24px}
+.card p{margin:0;line-height:1.65;font-size:15.5px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--card-dim);font-weight:700}
+.sig{font-size:12.5px;color:var(--card-dim)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btn{border:none;border-radius:12px;padding:12px 18px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;background:#2b2118;color:#fbf6ec}
+.btn.alt{background:transparent;color:var(--card-ink);box-shadow:inset 0 0 0 2px var(--line)}
+.btn.sel{background:var(--wood-d);color:#fff}
+.btn:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
+.seat{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:15px}
+.dot{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;color:#fff;font-weight:800}
+.note{background:#f1e7d6;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
+.talk{border-left:4px solid var(--wood-d);padding:4px 0 4px 12px;font-size:16px;line-height:1.65}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+th{color:var(--card-dim);font-weight:600}
+.tw{overflow-x:auto}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:70px 1fr 54px;gap:8px;align-items:center;font-size:14px;font-variant-numeric:tabular-nums}
+.bar span.t{height:12px;border-radius:6px;background:#eadfcd;overflow:hidden}
+.bar span.t i{display:block;height:100%;border-radius:6px}
+ul.q{margin:0;padding-left:20px;line-height:1.8;font-size:15px}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;z-index:15;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#boardWrap{transition:none}}
+</style>
+</head>
+<body>
+
+
+<div id="table">
+  <div id="grid">
+    <div class="hud" id="hudL">關卡<b id="hLevel">1 / 5</b></div>
+    <button class="pad" id="padN" data-dir="N" aria-label="北邊按鈕"><span class="lab"><span class="arrow">⬇</span><span class="who"></span></span><span class="sta"><i></i></span></button>
+    <div class="hud">時間<b id="hTime">12:00</b></div>
+    <button class="pad" id="padW" data-dir="W" aria-label="西邊按鈕"><span class="lab"><span class="arrow">⬇</span><span class="who"></span></span><span class="sta"><i></i></span></button>
+    <div id="boardWrap"><canvas id="cv" aria-label="木盤迷宮"></canvas></div>
+    <button class="pad" id="padE" data-dir="E" aria-label="東邊按鈕"><span class="lab"><span class="arrow">⬇</span><span class="who"></span></span><span class="sta"><i></i></span></button>
+    <div class="hud">掉落<b id="hFall">0</b></div>
+    <button class="pad" id="padS" data-dir="S" aria-label="南邊按鈕"><span class="lab"><span class="arrow">⬇</span><span class="who"></span></span><span class="sta"><i></i></span></button>
+    <div class="hud"><button id="pauseBtn">暫停</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+<div class="ov" id="ov"><div class="card" id="card"></div></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const DIRS=['N','E','S','W'];
+const DV={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]};
+const DNAME={N:'北',E:'東',S:'南',W:'西'};
+const PLAYERS=[
+  {id:1,icon:'🐦',name:'1號',c:'var(--p1)',hex:'#3b9cff'},
+  {id:2,icon:'🦊',name:'2號',c:'var(--p2)',hex:'#ff9440'},
+  {id:3,icon:'🐢',name:'3號',c:'var(--p3)',hex:'#2ecf8c'},
+  {id:4,icon:'🐙',name:'4號',c:'var(--p4)',hex:'#b48cff'}];
+const SEATS={
+  2:{N:1,E:1,S:2,W:2},
+  3:{N:1,E:2,S:3,W:3},
+  4:{N:1,E:2,S:3,W:4}};
+const KEYS={q:'N',arrowup:'N',p:'E',arrowright:'E',m:'S',arrowdown:'S',z:'W',arrowleft:'W'};
+
+// ---------- 關卡（木盤座標 0–100） ----------
+const LEVELS=[
+ {name:'熱身：會滾的彈珠',start:[14,14],goal:[84,84,7],walls:[[42,40,16,20]],holes:[],rivers:[],
+  tip:'按住自己的按鈕，木盤就往那一邊低下去，彈珠會往那邊滾。先試試看，再把彈珠送進右下角的家。',
+  talk:()=> '剛剛是誰先發現彈珠快撞牆了？下一關要不要先約好一個「停」的暗號？'},
+ {name:'S 形小路',start:[12,12],goal:[86,86,7],walls:[[0,30,72,5],[28,62,72,5]],holes:[],rivers:[],
+  tip:'路會轉兩個彎。轉彎前要先讓彈珠慢下來，慢下來要靠「對面」的人幫忙。',
+  talk:()=> '轉彎的時候，是誰說要換方向？大家是同時想到，還是有人先開口？'},
+ {name:'洞洞路',start:[10,50],goal:[90,50,6],walls:[[0,0,100,22],[0,78,100,22]],holes:[[30,40,6],[30,62,6],[50,50,6],[70,36,6],[70,64,6]],rivers:[],
+  tip:'路上有五個洞，掉下去就要回到起點。太快會來不及轉，太慢又會卡住。',
+  talk:s=> s.falls>0 ? `這關掉下去 ${s.falls} 次。是太快了，還是有人往錯的方向按？那時候大家說了什麼？` : '一次都沒掉！你們是怎麼控制速度的？是誰在注意洞的位置？'},
+ {name:'停穩打卡',start:[50,90],goal:[22,22,6],walls:[[38,38,24,24]],holes:[[50,12,5],[12,50,5]],rivers:[],
+  checkpoints:[[22,78],[78,78],[78,22]],
+  tip:'依照 1 → 2 → 3 的順序，讓彈珠在每個打卡圈裡「停住」一秒。三個都打卡，家門才會打開。',
+  talk:()=> '要停在打卡圈裡，一個人辦得到嗎？剛剛是誰負責「踩煞車」？'},
+ {name:'大風吹',start:[12,88],goal:[14,12,7],walls:[[0,48,70,5],[30,23,58,5]],holes:[],rivers:[[88,0,12,100]],wind:[22,0],
+  tip:'風一直往東吹，右邊是小河。西邊的人要一直頂住，可是按太久會沒力（按鈕下方的條）。沒力的時候要說出來，大家一起找地方停一下。',
+  talk:()=> ''}
+];
+
+// ---------- 狀態 ----------
+const G={players:4,seat:SEATS[4],level:0,phase:'start',timeLeft:720,ball:{x:0,y:0,vx:0,vy:0},
+  held:{N:new Set(),E:new Set(),S:new Set(),W:new Set()},keyHeld:{N:false,E:false,S:false,W:false},forced:{N:false,E:false,S:false,W:false},
+  sta:{N:100,E:100,S:100,W:100},tired:{N:false,E:false,S:false,W:false},
+  cpIndex:0,cpTimer:0,spawn:[0,0],falling:0,lvStat:null,stats:[],holdSec:{1:0,2:0,3:0,4:0},
+  tugCur:{NS:0,EW:0},tugCounted:{NS:false,EW:false},exhausts:0,bumps:0,windT:0,manual:false,retries:0};
+
+function newLvStat(){return {time:0,falls:0,tugs:0,bumps:0,exhausts:0};}
+function rawOn(d){return G.held[d].size>0||G.keyHeld[d]||G.forced[d];}
+function active(d){return rawOn(d)&&!G.tired[d];}
+
+// ---------- 版面 ----------
+const cv=$('#cv'),ctx=cv.getContext('2d');let S=300;
+function layout(){
+  const w=window.innerWidth,h=window.innerHeight;
+  const pad=Math.round(Math.max(54,Math.min(92,Math.min(w,h)*.12)));
+  S=Math.floor(Math.min(w-2*pad-12-24,h-2*pad-12-24));S=Math.max(200,S);
+  document.documentElement.style.setProperty('--pad',pad+'px');
+  document.documentElement.style.setProperty('--S',S+'px');
+  const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=S*dpr;cv.height=S*dpr;ctx.setTransform(dpr*S/100,0,0,dpr*S/100,0,0);
+  buildGrain();draw();
+}
+window.addEventListener('resize',layout);
+
+// ---------- 按鈕 ----------
+function labelPads(){
+  DIRS.forEach(d=>{const p=PLAYERS[G.seat[d]-1];const el=$('#pad'+d);el.style.setProperty('--c',p.c);
+    el.querySelector('.who').textContent=`${p.icon} ${p.name}・${DNAME[d]}`;});
+}
+DIRS.forEach(d=>{
+  const el=$('#pad'+d);
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){} G.held[d].add(e.pointerId);});
+  const up=e=>{G.held[d].delete(e.pointerId);};
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+});
+window.addEventListener('keydown',e=>{const d=KEYS[e.key.toLowerCase()];if(d){G.keyHeld[d]=true;e.preventDefault();}});
+window.addEventListener('keyup',e=>{const d=KEYS[e.key.toLowerCase()];if(d){G.keyHeld[d]=false;}});
+window.addEventListener('blur',()=>{DIRS.forEach(d=>{G.keyHeld[d]=false;G.held[d].clear();});});
+
+// ---------- 物理 ----------
+const R=2.6,ACC=55,DAMP=1.4,VMAX=45,DRAIN=9,RECOVER=22,WAKE=35;
+function lv(){return LEVELS[G.level];}
+function wallsOf(L){return L.walls.concat([[-10,-10,120,10],[-10,100,120,10],[-10,0,10,100],[100,0,10,100]]);}
+function resetBall(x,y){G.ball={x,y,vx:0,vy:0};}
+function physStep(dt){
+  const L=lv(),b=G.ball;
+  // 體力
+  DIRS.forEach(d=>{
+    if(rawOn(d)&&!G.tired[d]){G.sta[d]-=DRAIN*dt;if(G.sta[d]<=0){G.sta[d]=0;G.tired[d]=true;G.exhausts++;G.lvStat.exhausts++;toast(`${PLAYERS[G.seat[d]-1].name}（${DNAME[d]}）沒力了，先放開休息一下`);}}
+    else{G.sta[d]=Math.min(100,G.sta[d]+RECOVER*dt);if(G.tired[d]&&G.sta[d]>=WAKE)G.tired[d]=false;}
+  });
+  // 按住時間
+  const counted={};DIRS.forEach(d=>{if(active(d))counted[G.seat[d]]=true;});
+  Object.keys(counted).forEach(p=>G.holdSec[p]+=dt);
+  // 拔河
+  [['NS','N','S'],['EW','E','W']].forEach(([k,a,c])=>{
+    if(active(a)&&active(c)){G.tugCur[k]+=dt;if(G.tugCur[k]>.3&&!G.tugCounted[k]){G.tugCounted[k]=true;G.lvStat.tugs++;toast('兩邊同時按，彈珠被拉來拉去！');}}
+    else{G.tugCur[k]=0;G.tugCounted[k]=false;}
+  });
+  if(G.falling>0){G.falling-=dt;if(G.falling<=0){G.falling=0;resetBall(G.spawn[0],G.spawn[1]);}return;}
+  let ax=0,ay=0;DIRS.forEach(d=>{if(active(d)){ax+=DV[d][0]*ACC;ay+=DV[d][1]*ACC;}});
+  if(L.wind){ax+=L.wind[0];ay+=L.wind[1];}
+  b.vx+=ax*dt;b.vy+=ay*dt;const k=Math.exp(-DAMP*dt);b.vx*=k;b.vy*=k;
+  const sp=Math.hypot(b.vx,b.vy);if(sp>VMAX){b.vx*=VMAX/sp;b.vy*=VMAX/sp;}
+  b.x+=b.vx*dt;b.y+=b.vy*dt;
+  for(const w of wallsOf(L)){
+    const nx=Math.max(w[0],Math.min(b.x,w[0]+w[2])),ny=Math.max(w[1],Math.min(b.y,w[1]+w[3]));
+    let dx=b.x-nx,dy=b.y-ny,dist=Math.hypot(dx,dy);
+    if(dist<R){
+      if(dist<1e-6){dx=0;dy=-1;dist=1;}
+      const ux=dx/dist,uy=dy/dist;b.x=nx+ux*R;b.y=ny+uy*R;
+      const vn=b.vx*ux+b.vy*uy;if(vn<0){if(vn<-12){G.bumps++;G.lvStat.bumps++;}b.vx-=1.35*vn*ux;b.vy-=1.35*vn*uy;}
+    }
+  }
+  // 洞與河
+  let fell=false;
+  for(const h of L.holes){if(Math.hypot(b.x-h[0],b.y-h[1])<h[2])fell=true;}
+  for(const r of L.rivers){if(b.x>r[0]&&b.x<r[0]+r[2]&&b.y>r[1]&&b.y<r[1]+r[3])fell=true;}
+  if(fell){G.falling=.7;G.lvStat.falls++;G.fallTotal=(G.fallTotal||0)+1;b.vx=b.vy=0;toast('掉下去了，回到'+(G.cpIndex>0?'上一個打卡點':'起點'));return;}
+  // 打卡
+  if(L.checkpoints&&G.cpIndex<L.checkpoints.length){
+    const c=L.checkpoints[G.cpIndex];
+    if(Math.hypot(b.x-c[0],b.y-c[1])<5&&Math.hypot(b.vx,b.vy)<7){G.cpTimer+=dt;if(G.cpTimer>=1){G.cpIndex++;G.cpTimer=0;G.spawn=[c[0],c[1]];toast(G.cpIndex<L.checkpoints.length?`打卡 ${G.cpIndex} 完成！`:'三個都打卡了，家門打開！');}}
+    else G.cpTimer=Math.max(0,G.cpTimer-dt*2);
+  }
+  const locked=L.checkpoints&&G.cpIndex<L.checkpoints.length;
+  if(!locked&&Math.hypot(b.x-L.goal[0],b.y-L.goal[1])<L.goal[2]-1){levelClear();}
+}
+function tick(dt){
+  if(G.phase!=='play')return;
+  G.timeLeft-=dt;G.lvStat.time+=dt;G.windT+=dt;
+  if(G.timeLeft<=0){G.timeLeft=0;timeUp();return;}
+  physStep(dt);
+}
+
+// ---------- 畫面 ----------
+let grain=[];
+function buildGrain(){let s=7;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647;};grain=[];for(let i=0;i<46;i++)grain.push([rnd()*100,rnd()*.8+.2,rnd()*6+2,rnd()]);}
+function draw(){
+  const L=LEVELS[G.level]||LEVELS[0];
+  const g=ctx.createLinearGradient(0,0,100,100);g.addColorStop(0,'#e4b679');g.addColorStop(1,'#c98f4f');
+  ctx.fillStyle=g;ctx.fillRect(0,0,100,100);
+  ctx.strokeStyle='rgba(120,70,30,.18)';ctx.lineWidth=.3;
+  for(const [y,a,amp,ph] of grain){ctx.beginPath();for(let x=0;x<=100;x+=4){const yy=y+Math.sin(x/amp+ph*6)*a;x?ctx.lineTo(x,yy):ctx.moveTo(x,yy);}ctx.stroke();}
+  // 河
+  for(const r of L.rivers){ctx.fillStyle='#2f7fb3';ctx.fillRect(r[0],r[1],r[2],r[3]);
+    ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=.5;
+    for(let y=4;y<100;y+=8){ctx.beginPath();const o=(G.windT*6)%8;ctx.moveTo(r[0]+2,y+o-4);ctx.quadraticCurveTo(r[0]+r[2]/2,y+o-6,r[0]+r[2]-2,y+o-4);ctx.stroke();}}
+  // 洞
+  for(const h of L.holes){const hg=ctx.createRadialGradient(h[0],h[1],0,h[0],h[1],h[2]);hg.addColorStop(0,'#000');hg.addColorStop(.75,'#1b0f06');hg.addColorStop(1,'#5a3615');
+    ctx.fillStyle=hg;ctx.beginPath();ctx.arc(h[0],h[1],h[2],0,7);ctx.fill();}
+  // 牆
+  for(const w of L.walls){ctx.fillStyle='#6b4220';ctx.fillRect(w[0],w[1],w[2],w[3]);ctx.fillStyle='rgba(255,220,170,.35)';ctx.fillRect(w[0],w[1],w[2],.8);}
+  ctx.strokeStyle='#6b4220';ctx.lineWidth=2;ctx.strokeRect(1,1,98,98);
+  // 打卡
+  if(L.checkpoints){L.checkpoints.forEach((c,i)=>{
+    const done=i<G.cpIndex,cur=i===G.cpIndex;
+    ctx.lineWidth=1;ctx.strokeStyle=done?'#2e8b57':cur?'#fff':'rgba(255,255,255,.5)';ctx.setLineDash(cur||done?[]:[1.5,1.5]);
+    ctx.beginPath();ctx.arc(c[0],c[1],5,0,7);ctx.stroke();ctx.setLineDash([]);
+    if(cur&&G.cpTimer>0){ctx.strokeStyle='#2ecf8c';ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(c[0],c[1],6.4,-Math.PI/2,-Math.PI/2+G.cpTimer*Math.PI*2);ctx.stroke();}
+    ctx.fillStyle=done?'#2e8b57':'#3a2412';ctx.font='bold 4.6px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(done?'✓':String(i+1),c[0],c[1]+.3);
+  });}
+  // 家
+  const locked=L.checkpoints&&G.cpIndex<L.checkpoints.length;
+  const [gx,gy,gr]=L.goal;ctx.fillStyle=locked?'rgba(60,60,60,.35)':'rgba(46,207,140,.35)';ctx.beginPath();ctx.arc(gx,gy,gr,0,7);ctx.fill();
+  ctx.strokeStyle=locked?'#555':'#1f9e69';ctx.lineWidth=1;ctx.stroke();
+  ctx.font=(gr*1.1)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(locked?'🔒':'🏠',gx,gy+.4);
+  // 風
+  if(L.wind){ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=.5;
+    for(let i=0;i<9;i++){const y=6+i*11,x=((G.windT*30+i*37)%110)-10;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.stroke();}}
+  // 球
+  const b=G.ball;let r=R;if(G.falling>0)r=R*G.falling/.7;
+  if(r>.1){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.arc(b.x+.7,b.y+.9,r,0,7);ctx.fill();
+    const bg=ctx.createRadialGradient(b.x-r*.4,b.y-r*.4,r*.1,b.x,b.y,r);bg.addColorStop(0,'#ffffff');bg.addColorStop(.35,'#9fe3ff');bg.addColorStop(1,'#1d6fa5');
+    ctx.fillStyle=bg;ctx.beginPath();ctx.arc(b.x,b.y,r,0,7);ctx.fill();}
+}
+function hud(){
+  $('#hLevel').textContent=`${G.level+1} / ${LEVELS.length}`;
+  const t=Math.ceil(G.timeLeft);$('#hTime').textContent=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
+  $('#hTime').style.color=G.timeLeft<60?'var(--warn)':'';
+  $('#hFall').textContent=G.fallTotal||0;
+  let tx=0,ty=0;
+  DIRS.forEach(d=>{const el=$('#pad'+d),on=active(d)&&G.phase==='play';el.classList.toggle('on',on);el.classList.toggle('tired',G.tired[d]);
+    const i=el.querySelector('.sta i');if(d==='E'||d==='W'){i.style.height=G.sta[d]+'%';i.style.width='100%';}else{i.style.width=G.sta[d]+'%';}
+    if(on){tx+=DV[d][0];ty+=DV[d][1];}});
+  $('#boardWrap').style.transform=`perspective(900px) rotateX(${-ty*6}deg) rotateY(${tx*6}deg)`;
+}
+let last=performance.now(),acc=0;
+function loop(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(!G.manual){acc+=dt;while(acc>=1/120){tick(1/120);acc-=1/120;}}
+  draw();hud();requestAnimationFrame(loop);
+}
+let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800);}
+
+// ---------- 流程 ----------
+const ov=$('#ov'),card=$('#card');
+function show(html){card.innerHTML=html;ov.hidden=false;card.scrollTop=0;ov.scrollTop=0;}
+function hide(){ov.hidden=true;}
+function releaseAll(){DIRS.forEach(d=>{G.held[d].clear();G.keyHeld[d]=false;});}
+function screenStart(){
+  G.phase='start';
+  show(`<div class="eyebrow">2–4 人合作遊戲・約 12 分鐘</div>
+  <h1>一起歪一點</h1>
+  <p>一塊木盤，一顆彈珠。每個人只管一個方向：按住你的按鈕，木盤就往你那邊低。誰都不能幫別人按，彈珠要回家，只能靠大家一起說好。</p>
+  <div><div class="eyebrow" style="margin-bottom:6px">這組有幾個人？</div>
+  <div class="row" id="pcount">${[2,3,4].map(n=>`<button class="btn ${n===G.players?'sel':'alt'}" data-n="${n}">${n} 人</button>`).join('')}</div></div>
+  <div class="row"><button class="btn" id="goSeat">下一步：分配座位</button></div>
+  <div class="sig">本遊戲由Peiching開發，角色與情境均為虛構</div>`);
+  card.querySelectorAll('#pcount .btn').forEach(b=>b.onclick=()=>{G.players=+b.dataset.n;screenStart();});
+  $('#goSeat').onclick=screenSeat;
+}
+function screenSeat(){
+  G.seat=SEATS[G.players];labelPads();
+  const rows=PLAYERS.slice(0,G.players).map(p=>{const ds=DIRS.filter(d=>G.seat[d]===p.id).map(d=>`${DNAME[d]}邊`).join('＋');
+    return `<span class="dot" style="background:${p.hex}">${p.icon}</span><span><b>${p.name}</b> 管 ${ds} 的按鈕</span>`;}).join('');
+  show(`<div class="eyebrow">分配座位</div><h2>每個人坐到自己的那一邊</h2>
+  <div class="seat">${rows}</div>
+  <div class="note">平板平放在桌子中間，大家圍著坐，每個人面前就是自己的按鈕。${G.players===2?'兩個人的話，一個人管上和右，另一個人管下和左。':''}${G.players===3?'3 號管下和左兩個按鈕。':''}<br>用電腦鍵盤玩：北 Q、東 P、南 M、西 Z（方向鍵也可以）。</div>
+  <p>按鈕下面的細條是「力氣」，一直按會變少，放開就會慢慢回來。</p>
+  <div class="row"><button class="btn" id="goL">開始第一關</button><button class="btn alt" id="back">改人數</button></div>`);
+  $('#goL').onclick=()=>{G.level=0;G.timeLeft=720;G.stats=[];G.fallTotal=0;G.holdSec={1:0,2:0,3:0,4:0};G.exhausts=0;G.bumps=0;screenLevel();};
+  $('#back').onclick=screenStart;
+}
+function setupLevel(){
+  const L=lv();resetBall(L.start[0],L.start[1]);G.spawn=L.start.slice();G.cpIndex=0;G.cpTimer=0;G.falling=0;G.lvStat=newLvStat();
+  DIRS.forEach(d=>{G.sta[d]=100;G.tired[d]=false;});
+}
+function screenLevel(){
+  G.phase='card';setupLevel();releaseAll();
+  const L=lv();
+  show(`<div class="eyebrow">第 ${G.level+1} 關 / 共 ${LEVELS.length} 關</div><h2>${L.name}</h2><p>${L.tip}</p>
+  <div class="row"><button class="btn" id="goPlay">出發</button></div>`);
+  $('#goPlay').onclick=()=>{hide();releaseAll();G.phase='play';};
+}
+function levelClear(){
+  G.phase='card';releaseAll();
+  const s=G.lvStat;G.stats[G.level]=s;
+  if(G.level===LEVELS.length-1){screenEndA();return;}
+  const talk=lv().talk(s);
+  show(`<div class="eyebrow">第 ${G.level+1} 關過關</div><h2>彈珠到家了</h2>
+  <p>用了 ${Math.round(s.time)} 秒，掉下去 ${s.falls} 次，兩邊拔河 ${s.tugs} 次。</p>
+  <div class="talk">${talk}</div>
+  <p class="sig">先花半分鐘聊一下再按下一關。</p>
+  <div class="row"><button class="btn" id="goNext">下一關</button></div>`);
+  $('#goNext').onclick=()=>{G.level++;screenLevel();};
+}
+function statTable(){
+  const rows=G.stats.map((s,i)=>s?`<tr><td>${i+1}. ${LEVELS[i].name}</td><td>${Math.round(s.time)}</td><td>${s.falls}</td><td>${s.tugs}</td><td>${s.exhausts}</td></tr>`:'').join('');
+  return `<div class="tw"><table><tr><th>關卡</th><th>秒</th><th>掉落</th><th>拔河</th><th>沒力</th></tr>${rows}</table></div>`;
+}
+function holdBars(){
+  const ps=PLAYERS.slice(0,G.players);const mx=Math.max(1,...ps.map(p=>G.holdSec[p.id]));
+  return `<div class="bars">${ps.map(p=>`<div class="bar"><span>${p.icon} ${p.name}</span><span class="t"><i style="width:${G.holdSec[p.id]/mx*100}%;background:${p.hex}"></i></span><span>${Math.round(G.holdSec[p.id])} 秒</span></div>`).join('')}</div>`;
+}
+function feedback(){
+  const out=[];const tugs=G.stats.reduce((a,s)=>a+(s?s.tugs:0),0);
+  const per=G.stats.map((s,i)=>[i,s?s.tugs:0]).sort((a,b)=>b[1]-a[1])[0];
+  if(tugs>=5)out.push(`這一路有 ${tugs} 次兩邊同時按，最多的是「${LEVELS[per[0]].name}」。回想一下，那時候大家各自在想什麼？`);
+  else if(tugs>0)out.push(`兩邊同時按的情況只有 ${tugs} 次，你們大概有先講好誰先動、誰等一下。`);
+  else out.push('一次拔河都沒有，你們是怎麼分好誰先按的？');
+  const ps=PLAYERS.slice(0,G.players).map(p=>[p,G.holdSec[p.id]]).sort((a,b)=>b[1]-a[1]);
+  const hi=ps[0],lo=ps[ps.length-1];
+  if(G.players>2&&hi[1]>lo[1]*2+3)out.push(`${hi[0].name}按得最久，${lo[0].name}按得最少。按得少不一定是沒幫上忙，可能是一直在等時機，也可能是沒有機會說話，可以直接問本人。`);
+  else if(G.players===2&&hi[1]>lo[1]*2+3)out.push(`${hi[0].name}按的時間是${lo[0].name}的兩倍多。路線本來就偏某些方向，還是有人比較常主動？`);
+  else out.push('每個人按的時間差不多，工作分得滿平均。');
+  if(G.exhausts>0)out.push(`有 ${G.exhausts} 次有人按到沒力。沒力的那一刻，你有說出來嗎？隊友是怎麼知道的？`);
+  return out.map(t=>`<p>${t}</p>`).join('');
+}
+function discuss(){
+  return `<ul class="q"><li>哪一關你們最常同時說話？後來是怎麼決定誰先說的？</li><li>有沒有哪一刻，你很想直接幫別人按？你後來怎麼做？</li><li>如果再玩一次，你想換坐哪一邊？為什麼？</li></ul>`;
+}
+function screenEndA(){
+  G.phase='end';
+  const used=720+G.retries*240-G.timeLeft;
+  show(`<div class="eyebrow">結局</div><h2>五顆彈珠都回家了</h2>
+  <p>全部用了 ${Math.floor(used/60)} 分 ${Math.round(used%60)} 秒，一共掉下去 ${G.fallTotal||0} 次。</p>
+  ${statTable()}
+  <div class="eyebrow">每個人按住按鈕的時間</div>${holdBars()}
+  ${feedback()}
+  <div class="eyebrow">小組回顧</div>${discuss()}
+  <div class="row"><button class="btn" id="again">換座位再玩一次</button></div>
+  <div class="sig">本遊戲由Peiching開發，角色與情境均為虛構</div>`);
+  $('#again').onclick=()=>{G.retries=0;screenStart();};
+}
+function timeUp(){
+  G.phase='end';releaseAll();G.stats[G.level]=G.lvStat;
+  show(`<div class="eyebrow">結局</div><h2>天黑了</h2>
+  <p>時間到，彈珠停在第 ${G.level+1} 關「${lv().name}」。前面幾關的紀錄在這裡：</p>
+  ${statTable()}
+  <div class="eyebrow">每個人按住按鈕的時間</div>${holdBars()}
+  <div class="talk">卡最久的是哪一段？是方向不清楚、速度太快，還是大家同時在講話？先聊一分鐘再決定要不要再試。</div>
+  <div class="row"><button class="btn" id="retry">從這一關再試（多 4 分鐘）</button><button class="btn alt" id="restart">從頭開始</button></div>
+  <div class="sig">本遊戲由Peiching開發，角色與情境均為虛構</div>`);
+  $('#retry').onclick=()=>{G.timeLeft=240;G.retries++;screenLevel();};
+  $('#restart').onclick=()=>{G.retries=0;screenStart();};
+}
+let pausedFrom=null;
+$('#pauseBtn').onclick=()=>{
+  if(G.phase!=='play')return;G.phase='paused';releaseAll();
+  show(`<h2>暫停</h2><p>趁現在討論一下：下一步誰先按？要按多久？</p><div class="row"><button class="btn" id="resume">繼續</button><button class="btn alt" id="redo">這關重來</button></div>`);
+  $('#resume').onclick=()=>{hide();G.phase='play';};
+  $('#redo').onclick=()=>{screenLevel();};
+};
+
+// ---------- 測試介面 ----------
+window.__GAME={G,LEVELS,
+  state:()=>({phase:G.phase,level:G.level,ball:{...G.ball},cp:G.cpIndex,falls:G.lvStat&&G.lvStat.falls,timeLeft:G.timeLeft,sta:{...G.sta},tired:{...G.tired},falling:G.falling}),
+  press:(d,on)=>{G.forced[d]=!!on;},
+  setManual:v=>{G.manual=!!v;},
+  step:(sec)=>{const n=Math.round(sec*120);for(let i=0;i<n;i++)tick(1/120);}};
+
+labelPads();layout();screenStart();requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
