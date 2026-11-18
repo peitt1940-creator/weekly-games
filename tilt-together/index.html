@@ -114,7 +114,13 @@ const SEATS={
   2:{N:1,E:1,S:2,W:2},
   3:{N:1,E:2,S:3,W:3},
   4:{N:1,E:2,S:3,W:4}};
-const KEYS={q:'N',arrowup:'N',p:'E',arrowright:'E',m:'S',arrowdown:'S',z:'W',arrowleft:'W'};
+// 鍵盤：依「人」分區，不用方向鍵（方向鍵會讓一個人一隻手就包辦四個方向）
+// 4 人：Q／C／M／P 由左到右排開；3 人：3 號右手管 O、P；2 人：1 號左手 Q、W，2 號右手 O、P
+const KEYSETS={
+  2:{N:'q',E:'w',S:'o',W:'p'},
+  3:{N:'q',E:'g',S:'o',W:'p'},
+  4:{N:'q',E:'c',S:'m',W:'p'}};
+function keyDir(k){const m=KEYSETS[G.players];return DIRS.find(d=>m[d]===k);}
 
 // ---------- 關卡（木盤座標 0–100） ----------
 const LEVELS=[
@@ -163,7 +169,7 @@ window.addEventListener('resize',layout);
 // ---------- 按鈕 ----------
 function labelPads(){
   DIRS.forEach(d=>{const p=PLAYERS[G.seat[d]-1];const el=$('#pad'+d);el.style.setProperty('--c',p.c);
-    el.querySelector('.who').textContent=`${p.icon} ${p.name}・${DNAME[d]}`;});
+    el.querySelector('.who').textContent=`${p.icon} ${p.name}・${DNAME[d]}［${KEYSETS[G.players][d].toUpperCase()}］`;});
 }
 DIRS.forEach(d=>{
   const el=$('#pad'+d);
@@ -172,8 +178,8 @@ DIRS.forEach(d=>{
   el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);
   el.addEventListener('contextmenu',e=>e.preventDefault());
 });
-window.addEventListener('keydown',e=>{const d=KEYS[e.key.toLowerCase()];if(d){G.keyHeld[d]=true;e.preventDefault();}});
-window.addEventListener('keyup',e=>{const d=KEYS[e.key.toLowerCase()];if(d){G.keyHeld[d]=false;}});
+window.addEventListener('keydown',e=>{const d=keyDir(e.key.toLowerCase());if(d){G.keyHeld[d]=true;e.preventDefault();}});
+window.addEventListener('keyup',e=>{const d=keyDir(e.key.toLowerCase());if(d){G.keyHeld[d]=false;}});
 window.addEventListener('blur',()=>{DIRS.forEach(d=>{G.keyHeld[d]=false;G.held[d].clear();});});
 
 // ---------- 物理 ----------
@@ -315,7 +321,7 @@ function screenSeat(){
     return `<span class="dot" style="background:${p.hex}">${p.icon}</span><span><b>${p.name}</b> 管 ${ds} 的按鈕</span>`;}).join('');
   show(`<div class="eyebrow">分配座位</div><h2>每個人坐到自己的那一邊</h2>
   <div class="seat">${rows}</div>
-  <div class="note">平板平放在桌子中間，大家圍著坐，每個人面前就是自己的按鈕。${G.players===2?'兩個人的話，一個人管上和右，另一個人管下和左。':''}${G.players===3?'3 號管下和左兩個按鈕。':''}<br>用電腦鍵盤玩：北 Q、東 P、南 M、西 Z（方向鍵也可以）。</div>
+  <div class="note">平板平放在桌子中間，大家圍著坐，每個人面前就是自己的按鈕。${G.players===2?'兩個人的話，一個人管上和右，另一個人管下和左。':''}${G.players===3?'3 號管下和左兩個按鈕。':''}<br>用電腦鍵盤玩：每個人只按自己的鍵，${G.players===2?'1 號用左手 Q、W，2 號用右手 O、P':G.players===3?'1 號 Q、2 號 G、3 號 O 和 P':'1 號 Q、2 號 C、3 號 M、4 號 P'}，鍵名也寫在按鈕上。<br>規則只有一條：手只能放在自己的鍵上，不能替別人按。</div>
   <p>按鈕下面的細條是「力氣」，一直按會變少，放開就會慢慢回來。</p>
   <div class="row"><button class="btn" id="goL">開始第一關</button><button class="btn alt" id="back">改人數</button></div>`);
   $('#goL').onclick=()=>{G.level=0;G.timeLeft=720;G.stats=[];G.fallTotal=0;G.holdSec={1:0,2:0,3:0,4:0};G.exhausts=0;G.bumps=0;screenLevel();};
