@@ -46,6 +46,8 @@ canvas.board{display:block;width:100%;aspect-ratio:1;border-radius:12px;box-shad
 .code{font-family:var(--fd);font-size:56px;letter-spacing:.18em;line-height:1}
 .stat{font-size:15px;color:var(--dim)}.stat b{color:var(--ink);font-size:22px;font-variant-numeric:tabular-nums}
 .hint{font-size:13px;color:var(--dim);line-height:1.6}
+.perm{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:13px;color:var(--dim);border-top:1px solid #ffffff1f;padding-top:8px}
+.perm label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;color:var(--ink)}.perm input{width:18px;height:18px;accent-color:#2ecf8c}.plabel{width:100%}
 @media (max-width:900px){.focus{grid-template-columns:1fr}}
 .student .wrap{max-width:560px}
 body.student,body.student *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -98,6 +100,9 @@ const LEVELS=[
  {name:'大風吹',start:[12,88],goal:[14,12,7],walls:[[0,48,70,5],[30,23,58,5]],holes:[],rivers:[[88,0,12,100]],wind:[22,0],
   tip:'風一直往東吹，右邊是小河。西邊的人要一直頂住，可是按太久會沒力（按鈕上的力氣條）。沒力的時候要說出來，大家一起找地方停一下。',talk:''}
 ];
+const PERM_OF={start:'flow',go:'flow',next:'flow',retry:'flow',again:'flow',pause:'pause',resume:'pause',redo:'redo'};
+const PERM_NAME={flow:'開始與下一關',pause:'暫停／繼續',redo:'這關重來'};
+const ACT_NAME={start:'開始第一關',go:'出發',next:'下一關',retry:'再試一次',again:'回到等候區',pause:'暫停',resume:'繼續',redo:'這關重來'};
 const R=2.6,ACC=55,DAMP=1.4,VMAX=45,DRAIN=9,RECOVER=22,WAKE=35,TOTAL=720,EXTRA=240,HOLD_MS=900;
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -119,7 +124,7 @@ function newLvStat(){return {time:0,falls:0,tugs:0,bumps:0,exhausts:0};}
 function resetSta(r){DIRS.forEach(d=>{r.sta[d]=100;r.tired[d]=false;r.holdUntil[d]=0;});}
 function createRoom(players){let code;do{code=rid(4,'ABCDEFGHJKLMNPQRSTUVWXYZ');}while(rooms.has(code));
   const r={code,players,seatOwner:{},clients:new Set(),phase:'lobby',level:0,timeLeft:TOTAL,retries:0,ball:{x:0,y:0,vx:0,vy:0},holdUntil:{},sta:{},tired:{},cpIndex:0,cpTimer:0,spawn:[0,0],falling:0,
-    lvStat:newLvStat(),stats:[],holdSec:{1:0,2:0,3:0,4:0},tugCur:{NS:0,EW:0},tugCounted:{NS:false,EW:false},exhausts:0,fallTotal:0,windT:0,toast:{id:0,msg:''}};
+    lvStat:newLvStat(),stats:[],holdSec:{1:0,2:0,3:0,4:0},tugCur:{NS:0,EW:0},tugCounted:{NS:false,EW:false},exhausts:0,fallTotal:0,windT:0,toast:{id:0,msg:''},perms:{flow:false,pause:false,redo:false}};
   resetSta(r);rooms.set(code,r);return r;}
 function toastR(r,m){r.toast={id:r.toast.id+1,msg:m};}
 function setupLevel(r){const L=LEVELS[r.level];r.ball={x:L.start[0],y:L.start[1],vx:0,vy:0};r.spawn=L.start.slice();r.cpIndex=0;r.cpTimer=0;r.falling=0;r.lvStat=newLvStat();r.tugCur={NS:0,EW:0};r.tugCounted={NS:false,EW:false};resetSta(r);}
@@ -169,7 +174,7 @@ function snapshot(r,now){const seats={};seatsOf(r).forEach(s=>{const tok=r.seatO
     sta:Object.fromEntries(DIRS.map(d=>[d,Math.round(r.sta[d])])),tired:Object.assign({},r.tired),act,on,seats,
     lvStat:{time:Math.round(r.lvStat.time),falls:r.lvStat.falls,tugs:r.lvStat.tugs,exhausts:r.lvStat.exhausts},
     stats:r.stats.map(s=>s&&{time:Math.round(s.time),falls:s.falls,tugs:s.tugs,exhausts:s.exhausts}),
-    holdSec:Object.fromEntries(Object.entries(r.holdSec).map(([k,v])=>[k,Math.round(v)])),fallTotal:r.fallTotal,exhausts:r.exhausts,windT:r2(r.windT),toast:r.toast};}
+    holdSec:Object.fromEntries(Object.entries(r.holdSec).map(([k,v])=>[k,Math.round(v)])),fallTotal:r.fallTotal,exhausts:r.exhausts,windT:r2(r.windT),toast:r.toast,perms:Object.assign({},r.perms)};}
 // 學生傳來的訊息
 function onStudentMsg(conn,info,m){
   if(!m||typeof m!=='object')return;
@@ -185,7 +190,9 @@ function onStudentMsg(conn,info,m){
     r.seatOwner[s]=tok;return reply({seat:s});}
   if(m.t==='press'){const s=seatOfToken(r,tok),d=m.dir;if(!s)return reply({error:'你還沒有選號碼'});if(!dirsOf(r.players,s).includes(d))return reply({error:'這不是你的按鈕'});
     if(r.phase!=='play'){r.holdUntil[d]=0;return;}r.holdUntil[d]=m.on?Date.now()+HOLD_MS:0;return;}
-  if(m.t==='act'){reply({error:'開始、下一關、暫停都由老師控制'});return;}
+  if(m.t==='act'){const a=String(m.action||''),g=PERM_OF[a];if(!g||!r.perms[g])return reply({error:'這個按鈕目前由老師控制'});
+    const seat=seatOfToken(r,tok);const before=r.phase;const res=doAction(r,a,{seat});if(res!=='ok')return reply({error:res});
+    if(r.phase!==before)toastR(r,PL[seat].name+'按了「'+ACT_NAME[a]+'」');return reply({ok:1});}
 }
 let hostTimer=0;
 function startHostLoop(onFrame){let last=performance.now(),acc=0,sendAcc=0;
@@ -234,7 +241,7 @@ const SIG='<div class="sig">本遊戲由Peiching開發，角色與情境均為�
 function cardFor(s){const L=LEVELS[Math.min(s.level,LEVELS.length-1)];
   switch(s.phase){
     case 'lobby':{const miss=Array.from({length:s.players},(_,i)=>i+1).filter(i=>!s.seats[i].taken);
-      return {html:'<div class="eyebrow">等大家到齊</div><h2>一起歪一點</h2><p>每個人用自己的裝置選一個號碼。選了就不能再換，也不能替別人按。到齊後由老師按開始。</p>'+(miss.length?'<p>還沒有人選：'+miss.map(i=>PL[i].icon+' '+PL[i].name).join('、')+'</p>':'<p>都到齊了，可以開始。</p>'),buttons:miss.length?[]:[['start','開始第一關','dark']]};}
+      return {html:'<div class="eyebrow">等大家到齊</div><h2>一起歪一點</h2><p>每個人用自己的裝置選一個號碼。選了就不能再換，也不能替別人按。</p>'+(miss.length?'<p>還沒有人選：'+miss.map(i=>PL[i].icon+' '+PL[i].name).join('、')+'</p>':'<p>都到齊了，可以開始。</p>'),buttons:miss.length?[]:[['start','開始第一關','dark']]};}
     case 'card':return {html:'<div class="eyebrow">第 '+(s.level+1)+' 關 / 共 '+LEVELS.length+' 關</div><h2>'+L.name+'</h2><p>'+L.tip+'</p>',buttons:[['go','出發','dark']]};
     case 'paused':return {html:'<h2>暫停</h2><p>趁現在討論一下：下一步誰先按？要按多久？</p>',buttons:[['resume','繼續','dark'],['redo','這關重來','']]};
     case 'clear':return {html:'<div class="eyebrow">第 '+(s.level+1)+' 關過關</div><h2>彈珠到家了</h2><p>用了 '+s.lvStat.time+' 秒，掉下去 '+s.lvStat.falls+' 次，兩邊拔河 '+s.lvStat.tugs+' 次。</p><div class="talk">'+talkOf(s.level,s.lvStat)+'</div><p class="sig">先花半分鐘聊一下再按下一關。</p>',buttons:[['next','下一關','dark']]};
@@ -276,18 +283,20 @@ function teacher(){
       '<div class="row" style="justify-content:space-between"><button class="btn ghost" id="back">← 所有房間</button><span class="chip">'+fr.players+' 人</span></div>'+
       '<div><div class="eyebrow" style="color:var(--dim)">房間代碼</div><div class="code">'+fr.code+'</div></div>'+
       '<div class="row" style="flex-wrap:nowrap;align-items:flex-start"><div class="qr" style="max-width:170px">'+qrSvg(joinUrl(fr.code))+'</div><div class="hint">用平板或手機的相機掃 QR code 加入。<br>'+net+'</div></div>'+
-      '<div class="stat">第 <b id="fLevel"></b> 關・剩 <b id="fTime"></b>・掉落 <b id="fFall"></b></div><div class="row" id="fSeats"></div><div id="fCard"></div><div class="row" id="fCtl"></div></div></div></div>';
+      '<div class="stat">第 <b id="fLevel"></b> 關・剩 <b id="fTime"></b>・掉落 <b id="fFall"></b></div><div class="row" id="fSeats"></div><div id="fCard"></div><div class="row" id="fCtl"></div><div class="perm" data-perm="'+fr.code+'"></div></div></div></div>';
     return '<div class="wrap"><div class="top"><div><h1>一起歪一點・老師畫面</h1>'+SIG+'</div><div class="net">'+net+'</div></div>'+
       '<div class="row" style="margin-bottom:10px"><span>開一間新房間：</span><button class="btn" data-new="4">4 人</button><button class="btn" data-new="3">3 人</button><button class="btn" data-new="2">2 人</button></div>'+
       '<p class="hint" style="margin:0 0 14px">一組開一間，學生掃自己那一組的 QR code。點「投影這一間」放大給全班看。<b style="color:var(--ink)">上課中請不要重新整理或關掉這個分頁</b>，房間都在這個分頁裡，關掉就會消失。</p>'+
       '<div class="grid">'+snaps.map(r=>'<div class="rcard"><div class="rhead"><h3>'+r.code+'</h3><span class="chip">'+r.players+' 人・'+phaseText(r)+'</span></div>'+
         '<div class="row" style="align-items:flex-start;flex-wrap:nowrap"><canvas class="board" data-board="'+r.code+'" style="width:58%"></canvas><div class="qr" style="width:42%">'+qrSvg(joinUrl(r.code))+'</div></div>'+
-        '<div class="stat">第 <b data-lv="'+r.code+'"></b> 關・剩 <b data-time="'+r.code+'"></b></div><div class="row" data-seats="'+r.code+'"></div><div class="row" data-ctl="'+r.code+'"></div>'+
+        '<div class="stat">第 <b data-lv="'+r.code+'"></b> 關・剩 <b data-time="'+r.code+'"></b></div><div class="row" data-seats="'+r.code+'"></div><div class="row" data-ctl="'+r.code+'"></div><div class="perm" data-perm="'+r.code+'"></div>'+
         '<div class="row"><button class="btn dark" data-focus="'+r.code+'">投影這一間</button><button class="btn ghost" data-del="'+r.code+'">關閉房間</button></div></div>').join('')+'</div>'+
       (snaps.length?'':'<p class="hint">還沒有房間。先依各組人數開房間。</p>')+'</div>';
   }
   function ctlButtons(r,code){const c=cardFor(r);const b=(c?c.buttons:[]).map(x=>'<button class="btn '+x[2]+'" data-act="'+x[0]+'" data-room="'+code+'">'+x[1]+'</button>');if(r.phase==='play')b.push('<button class="btn" data-act="pause" data-room="'+code+'">暫停</button>');
     if(r.phase==='lobby'&&(!c||!c.buttons.length))b.push('<span class="hint">學生到齊後，這裡會出現「開始第一關」</span>');return b.join('');}
+  function permBox(r){return '<span class="plabel">學生也可以按：</span>'+Object.keys(PERM_NAME).map(g=>'<label><input type="checkbox" data-pg="'+g+'" data-room="'+r.code+'"'+(r.perms[g]?' checked':'')+'> '+PERM_NAME[g]+'</label>').join('');}
+  function syncPerms(){document.querySelectorAll('[data-perm]').forEach(el=>{const r=snaps.find(x=>x.code===el.dataset.perm);if(!r)return;const k=JSON.stringify(r.perms);if(el.dataset.k!==k){el.dataset.k=k;el.innerHTML=permBox(r);}});}
   function render(force){
     const key=(focus||'')+'|'+snaps.map(r=>r.code).join(',')+'|'+peerState+peerErr;
     if(force||key!==shellKey){shellKey=key;fCardKey='';app.innerHTML=shell();}
@@ -303,7 +312,9 @@ function teacher(){
       const t=document.querySelector('[data-time="'+r.code+'"]');if(t)t.textContent=mmss(r.timeLeft);const l=document.querySelector('[data-lv="'+r.code+'"]');if(l)l.textContent=r.level+1;
       const se=document.querySelector('[data-seats="'+r.code+'"]');const sk=JSON.stringify(r.seats);if(se&&se.dataset.k!==sk){se.dataset.k=sk;se.innerHTML=seatChips(r,false);}
       const ct=document.querySelector('[data-ctl="'+r.code+'"]');const ck2=r.phase+r.level+JSON.stringify(r.seats);if(ct&&ct.dataset.k!==ck2){ct.dataset.k=ck2;ct.innerHTML=ctlButtons(r,r.code);}});
+    syncPerms();
   }
+  app.addEventListener('change',e=>{const t=e.target;if(!t.dataset.pg)return;const r=rooms.get(t.dataset.room);if(r){r.perms[t.dataset.pg]=t.checked;act(()=>{});}});
   app.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
     if(t.dataset.new)act(()=>createRoom(+t.dataset.new));
     if(t.dataset.focus){focus=t.dataset.focus;render(true);}
@@ -364,12 +375,15 @@ function student(hostId,code){
     return '<div class="wrap"><div class="row" style="justify-content:space-between"><div class="me"><span class="chip" style="background:'+p.hex+';color:#fff">'+p.icon+' '+p.name+'</span>管 '+seatText(s.players,me)+'</div><span class="chip">房間 '+code+'</span></div>'+
       '<div class="status" style="margin-top:8px"><span id="sLevel"></span><span id="sTime"></span></div><div class="mini" style="margin-top:8px"><canvas class="board" id="mini"></canvas></div><div id="sCard" style="margin-top:12px"></div>'+
       '<div class="pads" id="pads"'+(s.phase==='play'?'':' hidden')+' style="grid-template-columns:repeat('+ds.length+',1fr)">'+ds.map(d=>'<button class="hold" data-hold="'+d+'" style="--c:'+p.hex+'"><span>'+ARROW[d]+' '+DNAME[d]+'</span><small>按住不放</small><span class="sta"><i></i></span></button>').join('')+'</div>'+
-      '<p class="hint" style="margin-top:12px">只有你能按這'+(ds.length>1?'兩':'一')+'個按鈕，別人的按鈕在別人手上。開始、下一關、暫停都由老師控制。看投影幕上的木盤，和組員說好再按。'+(ds.length>1?'':'用電腦的話可以按住空白鍵。')+'</p></div>';
+      '<p class="hint" style="margin-top:12px">只有你能按這'+(ds.length>1?'兩':'一')+'個按鈕，別人的按鈕在別人手上。看投影幕上的木盤，和組員說好再按。'+(ds.length>1?'':'用電腦的話可以按住空白鍵。')+'</p></div>';
   }
   function update(){if(!me||!s)return;
     $('#sLevel').textContent='第 '+(s.level+1)+' 關・'+phaseText(s);$('#sTime').textContent='剩 '+mmss(s.timeLeft);drawBoard($('#mini'),s);
-    const c=cardFor(s);const ck=s.phase+s.level+(c?c.html:'');
-    if(ck!==cardKey){cardKey=ck;$('#sCard').innerHTML=c?'<div class="card">'+c.html+(c.buttons.length?'<p class="sig">等老師在電腦上按「'+c.buttons[0][1]+'」</p>':'')+'</div>':'';}
+    const c=cardFor(s),pm=s.perms||{};const ck=s.phase+s.level+(c?c.html:'')+JSON.stringify(pm);
+    if(ck!==cardKey){cardKey=ck;
+      const mine=c?c.buttons.filter(b=>pm[PERM_OF[b[0]]]):[],wait=c?c.buttons.filter(b=>!pm[PERM_OF[b[0]]]):[];
+      const playBtns=s.phase==='play'?['pause','redo'].filter(a=>pm[PERM_OF[a]]).map(a=>'<button class="btn" data-act="'+a+'">'+ACT_NAME[a]+'</button>').join(''):'';
+      $('#sCard').innerHTML=c?'<div class="card">'+c.html+(mine.length?'<div class="row">'+mine.map(b=>'<button class="btn '+b[2]+'" data-act="'+b[0]+'">'+b[1]+'</button>').join('')+'</div>':'')+(wait.length&&!mine.length?'<p class="sig">等老師在電腦上按「'+wait[0][1]+'」</p>':'')+'</div>':(playBtns?'<div class="row" style="justify-content:flex-end">'+playBtns+'</div>':'');}
     document.querySelectorAll('[data-hold]').forEach(b=>{const d=b.dataset.hold;b.classList.toggle('on',!!(s.act[d]||holds[d]));b.classList.toggle('tired',!!s.tired[d]);b.querySelector('.sta i').style.width=s.sta[d]+'%';});
     if(s.phase!=='play')releaseAll();showToast(s.toast);}
   app.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
