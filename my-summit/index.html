@@ -14,7 +14,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 .chip b{color:var(--accent2)}
 .bar{display:inline-block;vertical-align:middle;width:70px;height:9px;border-radius:5px;background:#ddd5c4;overflow:hidden;margin-left:4px}
 .bar i{display:block;height:100%;background:#4f9a6c}
-#toast{position:fixed;top:52px;left:50%;transform:translateX(-50%);background:rgba(43,42,38,.9);color:#fff;padding:6px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;z-index:6;pointer-events:none;max-width:90vw;text-align:center}
+#toast{position:fixed;top:96px;left:50%;transform:translateX(-50%);background:rgba(43,42,38,.9);color:#fff;padding:6px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;z-index:6;pointer-events:none;max-width:90vw;text-align:center}
 #hint{position:fixed;bottom:150px;left:50%;transform:translateX(-50%);background:rgba(255,250,240,.95);border:1px solid var(--line);padding:4px 12px;border-radius:8px;font-size:14px;display:none;z-index:5;pointer-events:none}
 #dlg{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;width:min(640px,calc(100vw - 24px));background:var(--panel);border:2px solid #b9a57e;border-radius:12px;padding:12px 14px;z-index:20;display:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #dlg.top{bottom:auto;top:56px}
@@ -108,6 +108,17 @@ const SEGS=[[10,55,10,51,'p'],[10,51,20,51,'p'],[20,51,20,46,'p'],[20,46,8,46,'p
 SEGS.forEach(s=>seg(...s));
 rect(21,47,21,49);rect(14,27,17,28);rect(19,14,20,15);rect(22,13,22,15);
 for(let y=19;y<=24;y++)for(let x=15;x<=17;x++)setT(x,y,'w');
+// 隱藏小路（h 小路、H 陡坡）：一開始看起來是樹林，走近兩格內才會出現
+const TRAIL={};
+function trail(id,list){list.forEach(([x1,y1,x2,y2,c])=>{const dx=Math.sign(x2-x1),dy=Math.sign(y2-y1);let x=x1,y=y1;for(;;){setT(x,y,c||'h');TRAIL[x+','+y]=id;if(x===x2&&y===y2)break;x+=dx;y+=dy;}});}
+trail('berry',[[9,53,3,53],[3,52,3,49],[4,49,6,49],[3,48,3,45]]);
+trail('slope',[[14,50,14,47,'H']]);
+trail('scope',[[15,40,18,40],[18,39,18,37],[19,37,20,37],[18,41,18,43],[19,43,21,43],[21,42,21,41]]);
+trail('squirrel',[[8,30,8,33],[9,33,10,33],[7,31,4,31],[4,32,4,35]]);
+trail('back',[[5,18,5,11,'H'],[6,11,8,11]]);
+trail('rock',[[21,3,23,3],[23,2,23,1]]);
+const DISC={berry:'野莓叢',slope:'陡坡捷徑',scope:'望遠鏡',squirrel:'松鼠樹洞',back:'瀑布後的小路',rock:'秘密觀景石'};
+const TRAIL_TOAST={berry:'咦？樹叢裡好像有一條小路……',slope:'這邊有一段很陡的小坡',scope:'涼亭後面的樹林好像能鑽進去',squirrel:'路邊的草被踩出一條縫',back:'瀑布旁邊的樹後面有台階？',rock:'旗子後面還有路？'};
 // 裝飾石頭
 [[5,60],[16,56],[4,42],[17,61]].forEach(([x,y])=>setT(x,y,'r'));
 
@@ -133,32 +144,45 @@ const OBJ=[
  {id:'flag',x:14,y:2,kind:'flag',name:'山頂旗子'},
  {id:'stamp2',x:12,y:3,kind:'stamp',dest:2,name:'山頂蓋章台'},
  {id:'zhe2',x:17,y:3,kind:'npc',name:'阿哲',c:'#3f8fa0',hair:'#222',hidden:true},
+ {id:'berryB',x:7,y:49,kind:'berry',name:'野莓叢',secret:1},
+ {id:'log1',x:3,y:44,kind:'log',name:'倒下的大樹',secret:1},
+ {id:'scopeT',x:21,y:40,kind:'scope',name:'舊望遠鏡',secret:1},
+ {id:'log2',x:21,y:37,kind:'log',name:'倒下的大樹',secret:1},
+ {id:'hole',x:11,y:33,kind:'hole',name:'大樹洞',secret:1},
+ {id:'log3',x:4,y:36,kind:'log',name:'倒下的大樹',secret:1},
+ {id:'rockS',x:23,y:0,kind:'rock',name:'大石頭',secret:1},
 ];
 const DEST=['涼亭','瀑布','山頂'];
 const STAMPXY=[[10,39],[9,21],[12,4]]; // 蓋章台前方可站的格子
 function objAt(x,y){return OBJ.find(o=>!o.hidden&&x>=o.x&&x<o.x+(o.w||1)&&y>=o.y&&y<o.y+(o.h||1));}
 function walk(x,y){if(x<0||y<0||x>=W||y>=H)return false;const t=M[y][x];if(t==='T'||t==='w'||t==='r')return false;return !objAt(x,y);}
-const SPD=0.6;function cost(x,y){return (M[y][x]==='s'?2:1)*SPD;}
+const isHid=(x,y)=>{const t=M[y]&&M[y][x];return t==='h'||t==='H';};
+const known=(x,y)=>!isHid(x,y)||(S&&S.rev.has(x+','+y));
+const isStair=t=>t==='s'||t==='H';
+const SPD=0.6;function cost(x,y){return (isStair(M[y][x])?2:1)*SPD;}
 // 估時（最短分鐘數）
 function dist(sx,sy,tx,ty){const D=new Map(),k=(x,y)=>x+','+y;const q=[[0,sx,sy]];D.set(k(sx,sy),0);
  while(q.length){q.sort((a,b)=>a[0]-b[0]);const [d,x,y]=q.shift();if(x===tx&&y===ty)return d;if(d>D.get(k(x,y)))continue;
-  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(!walk(nx,ny))continue;const nd=d+cost(nx,ny);if(nd<(D.get(k(nx,ny))??1e9)){D.set(k(nx,ny),nd);q.push([nd,nx,ny]);}}}
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(!walk(nx,ny)||!known(nx,ny))continue;const nd=d+cost(nx,ny);if(nd<(D.get(k(nx,ny))??1e9)){D.set(k(nx,ny),nd);q.push([nd,nx,ny]);}}}
  return 1e9;}
 function pathTo(sx,sy,tx,ty){const P=new Map(),D=new Map(),k=(x,y)=>x+','+y;const q=[[0,sx,sy]];D.set(k(sx,sy),0);
  while(q.length){q.sort((a,b)=>a[0]-b[0]);const [d,x,y]=q.shift();if(x===tx&&y===ty)break;
   for(const [dx,dy,n] of [[1,0,'R'],[-1,0,'L'],[0,1,'D'],[0,-1,'U']]){const nx=x+dx,ny=y+dy;if(!walk(nx,ny))continue;const nd=d+cost(nx,ny);if(nd<(D.get(k(nx,ny))??1e9)){D.set(k(nx,ny),nd);P.set(k(nx,ny),[k(x,y),n]);q.push([nd,nx,ny]);}}}
  const out=[];let c=k(tx,ty);while(P.has(c)){const [p,n]=P.get(c);out.unshift(n);c=p;}return out;}
 const r5=m=>Math.max(5,Math.round(m/5)*5);
+let S;
 const EST=STAMPXY.map(([x,y])=>dist(10,59,x,y));
 
 // ===== 狀態 =====
 const START=9*60,NOON=12*60;
-let S;
 function reset(){S={x:10,y:59,dir:'U',t:START,st:8,max:10,water:1,shoe:false,seeSt:false,seeW:false,goal:null,goalSet:false,
  pre:new Set(),changes:0,goalHist:[],stamps:[],arrive:{},steps:0,rests:0,drinks:0,cps:new Set(),cpLooks:0,
- kui:null,zhe:null,lateWhy:null,warned3:false,ended:false,endType:null,origGoal:null,talked:{}};
- OBJ.find(o=>o.id==='zhe2').hidden=true;}
+ rev:new Set(),disc:new Set(),trailSeen:new Set(),berry:false,kui:null,zhe:null,lateWhy:null,warned3:false,ended:false,endType:null,origGoal:null,talked:{}};
+ OBJ.find(o=>o.id==='zhe2').hidden=true;reveal();}
 reset();
+function reveal(){const nt=[];for(let y=S.y-2;y<=S.y+2;y++)for(let x=S.x-2;x<=S.x+2;x++){const k=x+','+y;if(!S.rev.has(k)){S.rev.add(k);const id=TRAIL[k];if(id&&!S.trailSeen.has(id)){S.trailSeen.add(id);nt.push(id);}}}return nt;}
+function revealTrail(id){Object.keys(TRAIL).forEach(k=>{if(TRAIL[k]===id){S.rev.add(k);S.trailSeen.add(id);}});OBJ.forEach(o=>{if(o.secret&&[[-1,0],[1,0],[0,1],[0,-1]].some(([a,c])=>TRAIL[(o.x+a)+','+(o.y+c)]===id))S.rev.add(o.x+','+o.y);});}
+function find(id){S.disc.add(id);}
 const fmt=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 const goalTxt=g=>g?`${DEST[g.dest]}・${fmt(g.time)} 前`:'還沒訂';
 
@@ -178,6 +202,7 @@ function drawPerson(px,py,c,hair,label){
  cx.fillStyle='#222';cx.fillRect(px+13,py+9,2,2);cx.fillRect(px+18,py+9,2,2);
  if(label){cx.font='12px sans-serif';const w=cx.measureText(label).width+8;cx.fillStyle='rgba(255,250,240,.9)';cx.fillRect(px+16-w/2,py-14,w,15);cx.fillStyle='#2b2a26';cx.textAlign='center';cx.fillText(label,px+16,py-2);cx.textAlign='left';}
 }
+function drawTree(px,py,h){cx.fillStyle='#35603f';cx.fillRect(px,py,TS,TS);cx.fillStyle=h%3?'#2d5236':'#3e6e47';cx.beginPath();cx.arc(px+16,py+15,14,0,7);cx.fill();cx.fillStyle='#4c8556';cx.beginPath();cx.arc(px+12,py+11,6,0,7);cx.fill();}
 function draw(){
  tick++;
  rx+=(S.x-rx)*.35;ry+=(S.y-ry)*.35;
@@ -186,14 +211,17 @@ function draw(){
  const x0=Math.max(0,Math.floor(camX/TS)),y0=Math.max(0,Math.floor(camY/TS)),x1=Math.min(W-1,Math.ceil((camX+VW)/TS)),y1=Math.min(H-1,Math.ceil((camY+VH)/TS));
  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
   const t=M[y][x],px=Math.round(x*TS-camX),py=Math.round(y*TS-camY),h=hash(x,y);
-  if(t==='T'){cx.fillStyle='#35603f';cx.fillRect(px,py,TS,TS);cx.fillStyle=h%3?'#2d5236':'#3e6e47';cx.beginPath();cx.arc(px+16,py+15,14,0,7);cx.fill();cx.fillStyle='#4c8556';cx.beginPath();cx.arc(px+12,py+11,6,0,7);cx.fill();}
+  if((t==='h'||t==='H')&&!S.rev.has(x+','+y)){drawTree(px,py,h);}
+  else if(t==='h'){cx.fillStyle='#c9ad78';cx.fillRect(px,py,TS,TS);cx.fillStyle='#7fa65c';cx.fillRect(px,py,5,5);cx.fillRect(px+TS-5,py+TS-5,5,5);if(h%3===0)cx.fillRect(px+8+h%12,py+8+h%12,4,3);}
+  else if(t==='H'){cx.fillStyle='#b39565';cx.fillRect(px,py,TS,TS);cx.fillStyle='#806a4a';for(let i=0;i<4;i++)cx.fillRect(px+3,py+3+i*8,TS-6,2);cx.fillStyle='#7fa65c';cx.fillRect(px,py,4,TS);}
+  else if(t==='T'){cx.fillStyle='#35603f';cx.fillRect(px,py,TS,TS);cx.fillStyle=h%3?'#2d5236':'#3e6e47';cx.beginPath();cx.arc(px+16,py+15,14,0,7);cx.fill();cx.fillStyle='#4c8556';cx.beginPath();cx.arc(px+12,py+11,6,0,7);cx.fill();}
   else if(t==='g'||t==='r'){cx.fillStyle='#8fbf6a';cx.fillRect(px,py,TS,TS);if(h%7===0){cx.fillStyle=h%2?'#f3e27a':'#f4a6b8';cx.fillRect(px+8+h%12,py+10+h%9,4,4);}
    if(t==='r'){cx.fillStyle='#9a9488';cx.beginPath();cx.ellipse(px+16,py+18,12,9,0,0,7);cx.fill();}}
   else if(t==='p'){cx.fillStyle='#d8c08e';cx.fillRect(px,py,TS,TS);if(h%5===0){cx.fillStyle='#c4aa76';cx.fillRect(px+6+h%14,py+8+h%12,3,3);}}
   else if(t==='s'){cx.fillStyle='#bda37a';cx.fillRect(px,py,TS,TS);cx.fillStyle='#8c7656';for(let i=0;i<4;i++)cx.fillRect(px+2,py+3+i*8,TS-4,2);}
   else if(t==='w'){cx.fillStyle='#4c9fd0';cx.fillRect(px,py,TS,TS);cx.fillStyle='rgba(255,255,255,.55)';const o=(tick/3+y*8)%32;cx.fillRect(px+6,py+o-6,3,10);cx.fillRect(px+20,py+(o+14)%32-6,3,10);}
  }
- for(const o of OBJ){if(o.hidden)continue;const px=Math.round(o.x*TS-camX),py=Math.round(o.y*TS-camY);
+ for(const o of OBJ){if(o.hidden||(o.secret&&!S.rev.has(o.x+','+o.y)))continue;const px=Math.round(o.x*TS-camX),py=Math.round(o.y*TS-camY);
   if(px<-100||py<-100||px>VW+100||py>VH+100)continue;
   if(o.kind==='npc')drawPerson(px,py,o.c,o.hair,o.name);
   else if(o.kind==='sign'||o.kind==='cp'){cx.fillStyle='#7a5a37';cx.fillRect(px+14,py+14,4,16);cx.fillStyle=o.kind==='cp'?'#e8b04a':'#a9824f';cx.fillRect(px+3,py+3,26,14);cx.fillStyle='#fff';cx.font='bold 10px sans-serif';cx.fillText(o.kind==='cp'?'檢查':'步道',px+6,py+14);}
@@ -201,6 +229,11 @@ function draw(){
   else if(o.kind==='bench'){cx.fillStyle='#8b5e34';cx.fillRect(px+2,py+12,28,6);cx.fillRect(px+4,py+18,4,8);cx.fillRect(px+24,py+18,4,8);}
   else if(o.kind==='stamp'){cx.fillStyle='#a0522d';cx.fillRect(px+4,py+10,24,16);cx.fillStyle=S.stamps.includes(o.dest)?'#d33':'#f5e6c8';cx.beginPath();cx.arc(px+16,py+17,6,0,7);cx.fill();}
   else if(o.kind==='pav'){cx.fillStyle='#a33b2b';cx.fillRect(px-4,py,o.w*TS+8,22);cx.fillStyle='#6b4a2a';cx.fillRect(px+2,py+22,6,40);cx.fillRect(px+o.w*TS-8,py+22,6,40);}
+  else if(o.kind==='berry'){cx.fillStyle='#3f7a3a';cx.beginPath();cx.arc(px+16,py+16,13,0,7);cx.fill();cx.fillStyle=S.berry?'#5c8a4f':'#c8324a';for(const [a,b] of [[9,10],[20,9],[14,18],[23,20],[8,21]])cx.fillRect(px+a,py+b,4,4);}
+  else if(o.kind==='log'){cx.fillStyle='#35603f';cx.fillRect(px,py,TS,TS);cx.fillStyle='#7a5230';cx.fillRect(px-2,py+11,TS+4,11);cx.fillStyle='#a4774a';cx.beginPath();cx.arc(px+TS-2,py+16,5,0,7);cx.fill();}
+  else if(o.kind==='scope'){cx.fillStyle='#555';cx.fillRect(px+15,py+14,3,16);cx.fillStyle='#2f5c8a';cx.fillRect(px+6,py+8,20,7);cx.fillStyle='#9cc3e6';cx.fillRect(px+24,py+8,3,7);}
+  else if(o.kind==='hole'){cx.fillStyle='#5b3d22';cx.fillRect(px+4,py,24,TS);cx.fillStyle='#24160b';cx.beginPath();cx.ellipse(px+16,py+16,6,8,0,0,7);cx.fill();if(S.disc.has('squirrel')){cx.fillStyle='#b8733a';cx.fillRect(px+13,py+12,6,6);}}
+  else if(o.kind==='rock'){cx.fillStyle='#35603f';cx.fillRect(px,py,TS,TS);cx.fillStyle='#8f8a7e';cx.beginPath();cx.ellipse(px+16,py+18,14,11,0,0,7);cx.fill();}
   else if(o.kind==='flag'){cx.fillStyle='#555';cx.fillRect(px+14,py-10,3,40);cx.fillStyle='#e0533d';const f=Math.sin(tick/10)*3;cx.beginPath();cx.moveTo(px+17,py-10);cx.lineTo(px+34+f,py-3);cx.lineTo(px+17,py+4);cx.fill();}
  }
  drawPerson(Math.round(rx*TS-camX),Math.round(ry*TS-camY),'#e09a2f','#3a2412',null);
@@ -228,7 +261,7 @@ async function run(fn){if(busy||S.ended)return;busy=true;try{await fn();}finally
 
 // ===== 時間與體力 =====
 function addTime(m){S.t+=m;}
-function tire(t){S.st=Math.max(0,S.st-(t==='s'?0.35:0.07));}
+function tire(t){S.st=Math.max(0,S.st-(isStair(t)?0.35:0.07));}
 function heal(n){S.st=Math.min(S.max,S.st+n);}
 
 // ===== 移動 =====
@@ -239,6 +272,10 @@ function step(d){
  if(!walk(nx,ny)){hint();return false;}
  if(!S.goalSet&&ny<=55){run(async()=>{await say('林老師','等一下！你還沒訂目標喔。先來找我寫目標卡。');});return false;}
  S.x=nx;S.y=ny;S.steps++;const t=M[ny][nx];addTime(cost(nx,ny));tire(t);
+ const nt=reveal();if(nt.length)toast(TRAIL_TOAST[nt[0]]);
+ const tid=TRAIL[nx+','+ny];
+ if(tid==='slope'&&!S.disc.has('slope')){find('slope');toast('陡坡捷徑！比較近，可是很陡。');}
+ if(tid==='back'&&ny<=12&&!S.disc.has('back')){find('back');toast('小路接回步道了！省了一大段。');}
  hud();hint();after();return true;
 }
 function after(){
@@ -282,6 +319,7 @@ async function ACT(o){
   await say('阿豪學長','我五年級的時候爬過一次。到瀑布都還好，瀑布上面那段樓梯超累。');
   await say('阿豪學長','我那次衝到山頂，中間休息了兩次，還喝光了兩瓶水。');
   await say('阿豪學長','對了，瀑布旁邊有山泉可以裝水，涼亭跟路上也有長椅。');
+  await say('阿豪學長','聽說樹林裡還有一些小路。有的會走到好地方，有的走到底什麼都沒有。我那次沒時間鑽。');
   if(S.goalSet&&S.goal.dest===2&&S.goal.time<=10*60+30)await say('阿豪學長','山頂、'+fmt(S.goal.time)+'？……喔，到檢查站記得看一下時間喔。');
   return;}
  if(id==='sign0'){S.pre.add('sign');
@@ -320,6 +358,11 @@ async function ACT(o){
    if(S.zhe!==2){o.hidden=true;}
   }else await say('阿哲','我再坐一下就好。');return;}
  if(id==='zhe2'){await say('阿哲','嘿！我也上來了。剛剛謝啦，慢慢走好像真的比較不累。');return;}
+ if(o.kind==='berry'){if(S.berry){await say('','野莓已經被你摘光了。');return;}S.berry=true;find('berry');heal(3);addTime(2);await say('','一大叢紅紅的野莓！酸酸甜甜的，你吃了一把，腿好像比較有力了。（體力 +3，花 2 分鐘）');return;}
+ if(o.kind==='log'){await say('','一棵大樹倒在路上，過不去了。只好回頭。');S.deadEnds=(S.deadEnds||0)+1;return;}
+ if(o.kind==='scope'){find('scope');await say('','一支生鏽的舊望遠鏡。你轉了一下，看得到瀑布……');await say('','瀑布西邊的樹林裡，有一排石階往山上切過去，好像會接到上面的步道。');revealTrail('back');return;}
+ if(o.kind==='hole'){find('squirrel');await say('','樹洞裡有兩顆亮亮的眼睛——是松鼠！牠抱著一顆松果，看了你一眼，又縮回去了。');return;}
+ if(o.kind==='rock'){find('rock');Object.keys(TRAIL).forEach(k=>S.rev.add(k));OBJ.forEach(o=>{if(o.secret)S.rev.add(o.x+','+o.y);});await say('','你爬上大石頭。整條步道都在腳下，連那些藏在樹林裡的小路都看得一清二楚。');await say('',`你找到了 ${S.disc.size} 個意外發現（共 6 個）。`);return;}
  if(id==='flag'){await say('','風好大。整個小鎮變得好小，學校的操場像一張郵票。');return;}
 }
 
@@ -418,8 +461,9 @@ function end(type){if(S.ended)return;S.ended=true;S.endType=type;busy=false;clos
  if(S.kui===1)fb.push('小葵說：「你叫我先休息再決定，我休息完才知道自己還能走多遠。」');
  if(S.kui===2)fb.push('小葵說：「謝謝你陪我坐那一下。」');
  if(S.zhe===0)fb.push('阿哲說：「那口水救了我。」');
+ if(S.disc.size)fb.push(`你鑽進小路，找到了：${[...S.disc].map(k=>DISC[k]).join('、')}。`+(S.disc.has('back')?'瀑布後面的小路幫你省了一大段。':'')+(S.deadEnds?`也碰過 ${S.deadEnds} 次死路。`:''));
  const rows=[['最早的目標',S.origGoal?goalTxt(S.origGoal):'—'],['最後的目標',goalTxt(S.goal)],['蓋到的章',S.stamps.length?S.stamps.map(d=>DEST[d]).join('、'):'沒有'],
-  ['結束時間',fmt(Math.min(S.t,NOON))],['出發前看了幾件事',pre+' / 5'],['看檢查站',S.cpLooks+' 次'],['改目標',S.changes+' 次'],['休息／喝水',S.rests+' 次／'+S.drinks+' 次']];
+  ['結束時間',fmt(Math.min(S.t,NOON))],['出發前看了幾件事',pre+' / 5'],['看檢查站',S.cpLooks+' 次'],['改目標',S.changes+' 次'],['休息／喝水',S.rests+' 次／'+S.drinks+' 次'],['意外發現',S.disc.size+' / 6']];
  const card=$('endCard');
  card.innerHTML=`<h2>結局${type}：${title}</h2><div class="sub">${type==='A'?'抵達你自己的目標':'還在路上'}</div>
  <table class="st">${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
@@ -463,7 +507,7 @@ window.__GAME={get S(){return S;},step,interact,pathTo:(x,y)=>pathTo(S.x,S.y,x,y
  dlg:()=>({open:$('dlg').style.display==='block',text:$('dtext').textContent,name:$('dname').textContent,choices:[...$('dch').children].map(b=>b.textContent)}),
  next:()=>{if(dlgRes)$('dlg').click();},pick:i=>{const b=$('dch').children[i];if(b)b.click();},busy:()=>busy,
  goal:(d,t)=>{const dB=[...$('gDest').children].find(b=>+b.dataset.v===d),tB=[...$('gTime').children].find(b=>+b.dataset.v===t);dB&&dB.click();tB&&tB.click();$('gOk').click();},
- goalOpen:()=>$('ovGoal').style.display==='flex',endOpen:()=>$('ovEnd').style.display==='flex',bag:()=>{run(bag);},face:d=>{S.dir=d;}};
+ goalOpen:()=>$('ovGoal').style.display==='flex',endOpen:()=>$('ovEnd').style.display==='flex',bag:()=>{run(bag);},face:d=>{S.dir=d;},TRAIL,M};
 })();
 </script>
 </body>
