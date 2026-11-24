@@ -270,7 +270,7 @@ function step(d){
  const [dx,dy]={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]}[d];S.dir=d;
  const nx=S.x+dx,ny=S.y+dy;
  if(!walk(nx,ny)){hint();return false;}
- if(!S.goalSet&&ny<=55){run(async()=>{await say('林老師','等一下！你還沒訂目標喔。先來找我寫目標卡。');});return false;}
+ if(!S.goalSet&&ny<=55){if(!S.talked.lin)run(strike);else run(async()=>{await say('林老師','等一下！你還沒訂目標喔。先來找我寫目標卡。');});return false;}
  S.x=nx;S.y=ny;S.steps++;const t=M[ny][nx];addTime(cost(nx,ny));tire(t);
  const nt=reveal();if(nt.length)toast(TRAIL_TOAST[nt[0]]);
  const tid=TRAIL[nx+','+ny];
@@ -299,7 +299,16 @@ function drink(){if(S.water<=0)return false;S.water--;S.drinks++;heal(3);addTime
 function front(){const [dx,dy]={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]}[S.dir];let o=objAt(S.x+dx,S.y+dy);if(o)return o;
  for(const [ax,ay] of [[0,-1],[1,0],[-1,0],[0,1]]){o=objAt(S.x+ax,S.y+ay);if(o)return o;}return null;}
 function hint(){const o=front();const e=$('hint');if(o&&!busy){e.style.display='block';e.textContent='按「查看」：'+o.name;}else e.style.display='none';}
-function interact(){if(busy||S.ended||anyOv())return;const o=front();if(!o)return;run(()=>ACT(o));}
+function interact(){if(busy||S.ended||anyOv())return;const o=front();if(!o)return;if(!S.talked.lin&&o.id!=='lin'){run(strike);return;}run(()=>ACT(o));}
+// 還沒聽老師說規則就跑去做別的事：第 1 次提醒、第 2 次加重語氣、第 3 次取消任務
+async function strike(){S.strikes=(S.strikes||0)+1;
+ if(S.strikes===1)await say('林老師（遠遠地喊）','先去找老師。');
+ else if(S.strikes===2)await say('林老師（大聲）','叫你去聽老師說話！');
+ else{await say('林老師','……你已經第三次沒過來了。');cancelEnd();}}
+function cancelEnd(){if(S.ended)return;S.ended=true;S.endType='D';busy=false;closeDlg();
+ $('endCard').innerHTML=`<h2>任務取消</h2><p style="font-size:18px">因為不聽指令，取消任務。</p><p class="sub">林老師叫了你三次，你都沒有過來聽規則。</p><button class="go" id="again">從頭開始</button><div class="credit">本遊戲由Peiching開發，角色與情境均為虛構</div>`;
+ $('again').onclick=()=>{$('ovEnd').style.display='none';reset();rx=S.x;ry=S.y;hud();intro();};
+ setTimeout(()=>{$('ovEnd').style.display='flex';},200);}
 function estFrom(d){return dist(S.x,S.y,...STAMPXY[d]);}
 
 async function ACT(o){
