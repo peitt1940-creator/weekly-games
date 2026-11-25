@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>拼回那十分鐘</title>
+<style>
+/* 版面：一張深綠黑板當背景，上面放一張張「班級日誌」紙卡；每台平板只看得到自己的卡 */
+:root{
+  --board:#24433a; --board2:#1b342d; --paper:#fbf7ec; --paper2:#f1ead6;
+  --ink:#2a2620; --muted:#6d655a; --chalk:#e9f1ea; --pencil:#f2b632; --pencil-ink:#5a3e00;
+  --ok:#2f7d4f; --bad:#b4442f; --line:#d9cfb6;
+  --r1:#3d7cc9; --r2:#2f8f6b; --r3:#c0612b; --r4:#8a5ab8;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-head:"Zen Maru Gothic","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+input{-webkit-user-select:text;user-select:text}
+body{background:var(--board);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.65;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+#app{max-width:760px;margin:0 auto;padding-block:16px 40px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0;line-height:1.3}
+.chalk{color:var(--chalk)}
+.paper{background:var(--paper);border-radius:6px;padding:18px 18px;box-shadow:0 2px 0 var(--board2),0 6px 18px rgba(0,0,0,.18)}
+.paper.lined{background-image:repeating-linear-gradient(var(--paper) 0 31px,var(--line) 31px 32px);}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:14px 18px;min-height:52px;cursor:pointer;
+  background:var(--pencil);color:var(--pencil-ink);box-shadow:0 3px 0 #b78512}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #b78512}
+.btn.ghost{background:var(--paper2);color:var(--ink);box-shadow:0 3px 0 var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.opt:focus-visible,.pad button:focus-visible{outline:3px solid var(--r1);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.hero{padding:26px 20px;text-align:left}
+.hero h1{font-size:clamp(30px,7vw,44px);color:var(--chalk);letter-spacing:.04em}
+.hero .clock{font-family:ui-monospace,Menlo,monospace;color:var(--pencil);font-size:15px;letter-spacing:.12em}
+.sign{color:#bcd0c4;font-size:13px;text-align:center}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--chalk);flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-weight:700;color:#fff;font-size:15px}
+.b1{background:var(--r1)}.b2{background:var(--r2)}.b3{background:var(--r3)}.b4{background:var(--r4)}
+.timer{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;color:var(--pencil)}
+.steps{display:flex;gap:6px}
+.steps i{width:22px;height:8px;border-radius:4px;background:#47665c}
+.steps i.on{background:var(--pencil)}.steps i.done{background:#8fc2a4}
+.clue{border-left:6px solid var(--r1);background:var(--paper);padding:12px 14px;border-radius:4px}
+.clue.c2{border-color:var(--r2)}.clue.c3{border-color:var(--r3)}.clue.c4{border-color:var(--r4)}
+.clue .who{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.05em}
+.clues{display:flex;flex-direction:column;gap:10px}
+.q{font-weight:700;font-size:19px}
+.opt{display:block;width:100%;text-align:left;font:inherit;background:var(--paper2);border:2px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink)}
+.opt.sel{border-color:var(--r1);background:#e6eefa}
+.opts{display:flex;flex-direction:column;gap:8px}
+.seq{display:flex;flex-wrap:wrap;gap:8px;min-height:52px;padding:8px;border:2px dashed var(--line);border-radius:10px;background:#fff}
+.seq .chip{background:var(--pencil);color:var(--pencil-ink);border-radius:8px;padding:8px 10px;font-weight:700}
+.msg{border-radius:8px;padding:10px 14px;font-weight:700}
+.msg.bad{background:#f6dcd5;color:var(--bad)}
+.msg.ok{background:#d9efe1;color:var(--ok)}
+.piece{font-size:54px;line-height:1}
+.pieces{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.slots{display:flex;gap:8px;flex-wrap:wrap}
+.slot{width:62px;height:70px;border-radius:10px;background:#fff;border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:32px}
+.slot small{font-size:12px;color:var(--muted)}
+.slot.cur{border-color:var(--pencil)}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pad button{font-size:32px;min-height:62px;border-radius:10px;border:2px solid var(--line);background:#fff;cursor:pointer}
+.legs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:360px}
+details{background:rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;color:var(--chalk)}
+details summary{cursor:pointer;font-weight:700}
+details .clue{color:var(--ink);margin-top:8px}
+.heart{background:#fff6f0;border-left:6px solid var(--r3);padding:14px;border-radius:4px;white-space:pre-line}
+.footer{text-align:center}
+.footer button{background:none;border:0;color:#9db5a8;font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:10px}
+.svgwrap{max-width:100%;overflow-x:auto}
+svg text{font-family:var(--f-body)}
+table.end{border-collapse:collapse;width:100%}
+table.end td:last-child{white-space:nowrap;text-align:right}
+table.end td{border-bottom:1px solid var(--line);padding:6px 4px;vertical-align:top}
+@media (prefers-reduced-motion:no-preference){.pop{animation:pop .35s ease-out}@keyframes pop{from{transform:scale(.6);opacity:.3}to{transform:scale(1);opacity:1}}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+'use strict';
+const KEY='tenmin_v1', RESET_CODE='1010', COOLDOWN=15;
+const TEACHER=/[?&]teacher=1/.test(location.search);
+const ROLES={
+ 1:{icon:'🕐',name:'時間員',job:'你手上有班級日誌、廣播和鐘聲的時間。'},
+ 2:{icon:'🗺️',name:'地圖員',job:'你手上有教室和走廊的位置圖，知道誰在哪裡。'},
+ 3:{icon:'💬',name:'耳朵員',job:'你手上有大家說過的話。注意：有些話只聽到一半。'},
+ 4:{icon:'🔎',name:'物證員',job:'你手上有現場留下的東西：水、紙、痕跡。'}
+};
+const SEATS={4:{1:[1],2:[2],3:[3],4:[4]},3:{1:[1],2:[2],3:[3,4]},2:{1:[1,2],2:[3,4]}};
+const PAD=['🍎','🌙','⭐','🐟','🎈','🌵','🔔','🍩'];
+const PADNAME={'🍎':'蘋果','🌙':'月亮','⭐':'星星','🐟':'魚','🎈':'氣球','🌵':'仙人掌','🔔':'鈴鐺','🍩':'甜甜圈'};
+
+const MAP_SVG=`<div class="svgwrap"><svg viewBox="0 0 340 250" width="340" role="img" aria-label="四年三班教室位置圖">
+<rect x="1" y="1" width="338" height="248" fill="#fff" stroke="#6d655a"/>
+<rect x="70" y="8" width="200" height="18" fill="#24433a"/><text x="170" y="22" fill="#e9f1ea" font-size="12" text-anchor="middle">黑板（前面）</text>
+<rect x="0" y="60" width="10" height="150" fill="#9fd0f0"/><text x="16" y="56" font-size="11" fill="#2a2620">窗戶</text>
+<circle cx="-2" cy="85" r="0" fill="none"/>
+<text x="14" y="98" font-size="20">🌳</text><text x="40" y="100" font-size="10" fill="#6d655a">窗外的樹（靠黑板那半）</text>
+<g fill="#f1ead6" stroke="#b9ab88">${[0,1,2].map(r=>[0,1,2,3].map(c=>`<rect x="${110+c*52}" y="${50+r*38}" width="40" height="24"/>`).join('')).join('')}</g>
+<text x="210" y="178" font-size="10" text-anchor="middle" fill="#6d655a">座位區</text>
+<rect x="22" y="160" width="80" height="44" fill="#fde7a6" stroke="#b78512"/>
+<text x="62" y="178" font-size="11" text-anchor="middle" fill="#2a2620">窗邊後桌</text>
+<text x="62" y="196" font-size="11" text-anchor="middle" fill="#2a2620">🌈 紙橋</text>
+<rect x="300" y="200" width="38" height="46" fill="#e7d3b0" stroke="#6d655a"/><text x="319" y="227" font-size="11" text-anchor="middle">門</text>
+<text x="170" y="240" font-size="11" text-anchor="middle" fill="#6d655a">後面（置物櫃）</text>
+</svg></div><div class="small muted">紙橋放在窗邊後桌，橋頭朝黑板。窗戶在後桌的左手邊。</div>`;
+
+const HALL_SVG=`<div class="svgwrap"><svg viewBox="0 0 340 120" width="340" role="img" aria-label="走廊與飲水機位置">
+<rect x="1" y="1" width="338" height="118" fill="#fff" stroke="#6d655a"/>
+<rect x="10" y="10" width="150" height="60" fill="#f1ead6" stroke="#b9ab88"/><text x="85" y="45" text-anchor="middle" font-size="12">四年三班教室</text>
+<rect x="160" y="10" width="14" height="60" fill="#6d655a"/><text x="167" y="85" font-size="10" text-anchor="middle">牆</text>
+<rect x="190" y="10" width="50" height="60" fill="#ddd" stroke="#999"/><text x="215" y="45" text-anchor="middle" font-size="11">樓梯</text>
+<text x="290" y="45" text-anchor="middle" font-size="22">🚰</text><text x="290" y="64" text-anchor="middle" font-size="11">飲水機</text>
+<line x1="30" y1="100" x2="290" y2="100" stroke="#b78512" stroke-dasharray="4 4"/><text x="160" y="114" text-anchor="middle" font-size="10" fill="#6d655a">走廊，大約 15 步</text>
+</svg></div>`;
+
+const STAGES=[
+ {title:'第 1 關　先把時間排好',
+  q:'把這四件事照發生的先後排好。',
+  type:'order',
+  items:{rain:'🌧️ 開始下雨',abu:'🚶 阿布走進教室',open:'🪟 窗戶被打開',tilt:'🌈 紙橋開始歪'},
+  show:['rain','abu','open','tilt'], answer:['open','rain','tilt','abu'],
+  hint:'先找有寫幾點幾分的線索，再想：紙為什麼會歪？阿布看到橋的時候，橋是什麼樣子？',
+  clues:{
+   1:['值日生日誌：「10:02 開窗通風。——米米」','10:05 學校廣播：「下雨了，在操場的同學請到走廊。」'],
+   2:['飲水機排隊紀錄（衛生股長記的）：廣播響的時候，阿布排第 3 個，大約 2 分鐘後才輪到他。','從飲水機走回教室，大約要 1 分鐘。'],
+   3:['豆豆說：「我走到門口的時候，看到阿布兩手扶著橋，橋已經歪一邊了。」','小樹說：「我 10:00 出去的時候，橋還好好的。」'],
+   4:['紙橋其中一隻腳底下有一圈水，那隻腳的紙摸起來軟軟的。','窗台上有雨滴。']
+  },
+  pieces:{1:'🍎',2:'🌙',3:'⭐',4:'🐟'}},
+ {title:'第 2 關　是哪一隻腳？為什麼？',
+  q:'紙橋先壞掉的是哪一隻腳？原因是什麼？',
+  type:'legcause',
+  legs:{lf:'左前腳',rf:'右前腳',lb:'左後腳',rb:'右後腳'},
+  causes:{hit:'被人撞到',water:'被雨水弄濕、變軟',glue:'膠水還沒乾'},
+  answer:{leg:'lf',cause:'water'},
+  hint:'「前」是靠黑板那頭，「左」是窗戶那邊。三個原因，各有一條線索可以排除或支持。',
+  clues:{
+   1:['班級日誌：「昨天放學前橋腳塗膠水。今天 7:50 檢查：膠水已乾 ✔」'],
+   2:[{html:MAP_SVG}],
+   3:['小樹說：「我們試過，這種紙碰到水，大概三分鐘就軟掉了。」','隔壁班巡走廊的值週生說：「下課沒看到有人在你們教室後面跑來跑去。」'],
+   4:['濕掉的那隻腳，是離窗戶最近、又在橋頭那一邊的腳，旁邊還黏著一片樹葉。','橋身上沒有凹痕，也沒有鞋印。']
+  },
+  pieces:{1:'🎈',2:'🍎',3:'🔔',4:'🌵'}},
+ {title:'第 3 關　「壞掉也好」在說什麼？',
+  q:'大家聽到阿布說「壞掉也好」。他說的「壞掉」，最可能是指什麼？',
+  type:'choice',
+  options:{bridge:'紙橋',strap:'阿布的水壺背帶',weather:'下雨天的戶外課'},
+  answer:'strap',
+  hint:'先確定那句話是在哪裡、幾點說的。說的人那時候看得到紙橋嗎？',
+  clues:{
+   1:['豆豆和柚子都說，聽到那句話是在 10:07 左右，地點在飲水機旁邊。'],
+   2:[{html:HALL_SVG},'從飲水機看不到教室裡面，中間隔著一道牆和樓梯。'],
+   3:['豆豆聽到的：「……壞掉也好啦……」（後面太吵，沒聽清楚）','柚子聽到的：「我的水壺背帶……」（只聽到前半句）'],
+   4:['阿布桌上的水壺，背帶斷了一邊。','水壺上貼著一張紙條：「哥哥的舊水壺」。']
+  },
+  pieces:{1:'🐟',2:'🍩',3:'🌙',4:'🎈'}},
+ {title:'第 4 關　把十分鐘拼回來',
+  q:'哪一段說法，跟全組的線索完全對得上？',
+  type:'choice',
+  options:{
+   b:'阿布回教室時說「壞掉也好」，然後把紙橋推倒，跑了出去。',
+   c:'先開始下雨，米米才去開窗。雨打濕了左前腳，橋慢慢歪掉；阿布回來扶橋時，橋倒了，他嚇到跑出去。',
+   ok:'米米開窗通風後開始下雨，雨打濕了左前腳，橋慢慢歪掉；阿布回來拿水壺，看到橋歪了想扶，橋倒了，他嚇到跑出去。',
+   d:'米米開窗通風後開始下雨，雨打濕了右後腳，橋慢慢歪掉；阿布回來拿水壺，想扶橋時橋倒了，他嚇到跑出去。'},
+  order:['b','ok','c','d'],
+  answer:'ok',
+  hint:'四段說法，每段錯的地方不一樣。每個人用自己的線索，各自刪掉一段。',
+  clues:{
+   1:['10:10 上課鐘響，小樹第一個走進教室，看到橋倒在地上。','（別忘了：開窗 10:02，下雨 10:05）'],
+   2:['豆豆當時站在門口，看得到後桌，但看不到窗台。','（別忘了：濕掉的是靠窗、靠黑板的那隻腳）'],
+   3:['豆豆說：「我看到阿布扶著橋，然後橋就倒了，他就跑出去。我就覺得一定是他弄的。」','（別忘了：「壞掉也好」是在飲水機說的）'],
+   4:['倒下的橋，只有一隻腳是彎的，其他三隻都是直的。','（別忘了：橋身上沒有鞋印、沒有凹痕）']
+  },
+  pieces:{1:'⭐',2:'🌵',3:'🍩',4:'🔔'}}
+];
+const HEARTS={
+ 1:{who:'米米',text:'老師說教室太悶，叫值日生開窗。我開了，就去操場了，我沒想到會下雨。\n大家一直在說阿布，我好幾次想舉手說「窗戶是我開的」，可是我怕大家就改成看著我。'},
+ 2:{who:'阿布',text:'我回去拿水壺，看到橋歪一邊，就想把它扶正。結果手一碰，它就倒了。\n我腦袋一片空白，就跑出去了。豆豆說是我弄的，我想說不是，可是我真的有碰到它。'},
+ 3:{who:'豆豆',text:'我真的看到阿布扶著橋，然後橋就倒了。我第一個喊出來，是因為小樹做那座橋做了好久，我替她生氣。\n可是現在想想，前面發生什麼，我沒有看到。'},
+ 4:{who:'小樹',text:'那座橋我做了三個下課。看到它倒在地上，我第一個想法是「一定有人故意的」。\n現在知道是雨，我還是很難過。可是好像不知道要生誰的氣了。'}
+};
+const PLANS={
+ p1:{t:'先私下問阿布發生什麼事，再決定要不要跟全班說',r:'阿布說得比剛才多了。他也問：「那大家會不會還是覺得是我？」私下說清楚之後，還是要想想怎麼讓全班知道。'},
+ p2:{t:'請豆豆跟阿布說：她看到了什麼、哪些是她猜的',r:'豆豆說：「我看到的是真的，只是前面那段我沒看到。」把「看到的」和「猜的」分開講，比直接說「我說錯了」容易開口。'},
+ p3:{t:'跟米米說窗戶的事，但讓她知道下雨不是她能預料的',r:'米米鬆了一口氣，眼眶有點紅。她說以後下雨前，會先看看窗邊放了什麼。'},
+ p4:{t:'陪小樹一起想：橋要不要重做、怎麼讓它不怕水',r:'小樹想到橋腳可以包一層透明膠帶，還想做兩座來比比看。難過還在，不過她有一件事可以做了。'},
+ p5:{t:'直接在全班面前，把這十分鐘的經過講出來',r:'全班很快就知道不是阿布故意的。不過阿布和米米被大家盯著看，臉都紅了。下次講之前，可以先問問當事人想不想在場。'}
+};
+
+// ---------- 狀態 ----------
+let S=load();
+function fresh(){return {screen:'start',size:null,seat:null,stage:0,phase:'clue',wrong:0,wrongBy:[0,0,0,0],t0:null,tEnd:null,draft:null,gate:[],plans:[],cool:0,hintOn:false};}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&v.screen)return Object.assign(fresh(),v);}catch(e){}return fresh();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function roles(){return TEACHER?[1,2,3,4]:(S.size&&S.seat?SEATS[S.size][S.seat]:[]);}
+const $=s=>document.querySelector(s);
+const app=$('#app');
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function go(screen){S.screen=screen;save();render();window.scrollTo(0,0);}
+function mmss(ms){const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+
+function footer(){return `<div class="footer"><button id="resetLink" type="button">老師重設這台</button></div>`;}
+function bindFooter(){const b=$('#resetLink');if(b)b.onclick=()=>{S._resetAsk=true;render();};}
+function resetBox(){
+  if(!S._resetAsk)return '';
+  return `<div class="paper"><h3>老師重設這台</h3><p class="small muted">重設後這台平板的號碼和進度會清空。請輸入老師碼。</p>
+  <div class="row"><input id="rc" inputmode="numeric" maxlength="4" style="font:inherit;font-size:22px;width:120px;padding:8px;border-radius:8px;border:2px solid var(--line)" aria-label="老師碼">
+  <button class="btn" id="rcOk" type="button">重設</button><button class="btn ghost" id="rcNo" type="button">取消</button></div><div id="rcMsg"></div></div>`;
+}
+function bindReset(){
+  const ok=$('#rcOk');if(!ok)return;
+  ok.onclick=()=>{if($('#rc').value===RESET_CODE){try{localStorage.removeItem(KEY);}catch(e){}S=fresh();render();}else{$('#rcMsg').innerHTML='<div class="msg bad">老師碼不對。</div>';}};
+  $('#rcNo').onclick=()=>{S._resetAsk=false;render();};
+}
+
+// ---------- 畫面 ----------
+function render(){
+  const f={start:vStart,pick:vPick,intro:vIntro,stage:vStage,heart:vHeart,plan:vPlan,end:vEnd}[S.screen]||vStart;
+  f();
+  bindFooter();bindReset();
+}
+function vStart(){
+  const has=S.size&&S.seat&&!TEACHER;
+  app.innerHTML=`
+  <div class="hero">
+    <div class="clock">10:00 — 10:10　下課</div>
+    <h1>拼回那十分鐘</h1>
+    <p class="chalk" style="max-width:34em">下課回來，班上做了三個下課的紙橋倒在地上。大家都說是阿布弄的。<br>你們是調查小組，每個人手上只有一部分線索。</p>
+  </div>
+  <div class="paper">
+    <p style="margin-top:0"><b>2–4 人一組・每人一台平板或手機・大約 15 分鐘</b></p>
+    <div class="row">
+      ${has?`<button class="btn" id="cont" type="button">繼續（這台是 ${S.seat} 號）</button>`:`<button class="btn" id="startBtn" type="button">開始</button>`}
+    </div>
+    ${TEACHER?'<p class="small muted">老師預覽模式：看得到四個角色的線索與答案。</p>':''}
+  </div>
+  ${resetBox()}
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>
+  ${footer()}`;
+  const st=$('#startBtn');if(st)st.onclick=()=>{if(TEACHER){S.size=4;S.seat=1;S.t0=Date.now();go('intro');}else go('pick');};
+  const c=$('#cont');if(c)c.onclick=()=>go(S.t0&&(S.stage>0||S.phase!=='clue')?'stage':'intro');
+}
+function vPick(){
+  const size=S._tmpSize||null;
+  let seatHtml='';
+  if(size){
+    seatHtml=`<p class="q">這台平板是幾號？</p><div class="row">`+Object.keys(SEATS[size]).map(k=>{
+      const rs=SEATS[size][k];
+      return `<button class="btn ghost seatBtn" data-k="${k}" type="button">${k} 號　${rs.map(r=>ROLES[r].icon+ROLES[r].name).join('＋')}</button>`;}).join('')+`</div>
+      <p class="small muted">組員之間先說好誰是幾號，不要重複。選了之後這台就不能換，要換請找老師。</p>`;
+  }
+  app.innerHTML=`<div class="hdr"><h2>分配號碼</h2></div>
+  <div class="paper"><p class="q" style="margin-top:0">你們這組有幾個人？</p>
+  <div class="row">${[2,3,4].map(n=>`<button class="btn ${size===n?'':'ghost'} sizeBtn" data-n="${n}" type="button">${n} 人</button>`).join('')}</div>
+  ${seatHtml?'<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">'+seatHtml:''}
+  <div id="confirmBox"></div></div>
+  <button class="btn ghost" id="back" type="button" style="align-self:flex-start">回上一頁</button>
+  ${resetBox()}${footer()}`;
+  document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>{S._tmpSize=+b.dataset.n;vPick();bindFooter();bindReset();});
+  document.querySelectorAll('.seatBtn').forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.k, rs=SEATS[size][k];
+    $('#confirmBox').innerHTML=`<div class="msg ok" style="margin-top:14px">確定這台是 ${k} 號（${rs.map(r=>ROLES[r].name).join('＋')}）？</div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="yes" type="button">確定</button></div>`;
+    $('#yes').onclick=()=>{S.size=size;S.seat=k;delete S._tmpSize;S.t0=Date.now();go('intro');};
+  });
+  $('#back').onclick=()=>go('start');
+}
+function myBadges(){return roles().map(r=>`<span class="badge b${r}">${ROLES[r].icon} ${r} 號 ${ROLES[r].name}</span>`).join(' ');}
+function vIntro(){
+  app.innerHTML=`<div class="hdr"><div>${myBadges()}</div></div>
+  <div class="paper">
+   <h2 style="margin-bottom:8px">王老師說</h2>
+   <p>「先不要急著說是誰。紙橋是 10:00 下課的時候還好好的，10:10 上課鐘響就倒了。請調查小組把這十分鐘拼回來。」</p>
+   <p class="small muted">出現的人：小樹（做橋的人）、米米（今天的值日生）、阿布（大家說是他）、豆豆（第一個喊出來的人）、柚子（在走廊的人）</p>
+  </div>
+  <div class="paper">
+   <h3>你的工作</h3>
+   ${roles().map(r=>`<p><span class="badge b${r}">${ROLES[r].icon} ${ROLES[r].name}</span>　${ROLES[r].job}</p>`).join('')}
+   <h3>調查小組三條規則</h3>
+   <ol style="padding-left:1.3em;margin:6px 0">
+    <li>你的畫面只有你看得到。線索<b>用說的</b>，不要把平板拿給別人看。</li>
+    <li>每一關的答案，<b>每個人都要在自己的平板上輸入</b>。</li>
+    <li>答對後會出現圖案。把全組的圖案照號碼排好，才打得開下一關。</li>
+   </ol>
+   <button class="btn" id="go1" type="button">我準備好了</button>
+  </div>${resetBox()}${footer()}`;
+  $('#go1').onclick=()=>{S.stage=0;S.phase='clue';go('stage');};
+}
+function head(){
+  return `<div class="hdr"><div>${myBadges()}</div><div class="row" style="align-items:center"><div class="steps">${STAGES.map((s,i)=>`<i class="${i<S.stage?'done':i===S.stage?'on':''}"></i>`).join('')}</div><span class="timer" id="tm">${mmss(Date.now()-S.t0)}</span></div></div>`;
+}
+function clueHtml(st,r){
+  return (st.clues[r]||[]).map(c=>`<div class="clue c${r}"><div class="who">${ROLES[r].icon} ${ROLES[r].name}的線索</div>${typeof c==='string'?esc(c):c.html}</div>`).join('');
+}
+function pastClues(){
+  if(S.stage===0)return '';
+  let h='<details><summary>之前的線索（你的）</summary>';
+  for(let i=0;i<S.stage;i++){h+=`<div class="small" style="margin-top:8px;color:var(--chalk)">${STAGES[i].title}</div>`+roles().map(r=>clueHtml(STAGES[i],r)).join('');}
+  return h+'</details>';
+}
+function answerUI(st){
+  const d=S.draft||{};
+  if(st.type==='order'){
+    const seq=d.seq||[];
+    return `<p class="small muted">依序點下去。點錯可以按「清掉重排」。</p>
+    <div class="seq" id="seq">${seq.map((k,i)=>`<span class="chip">${i+1}. ${st.items[k]}</span>`).join('')||'<span class="muted small">（還沒排）</span>'}</div>
+    <div class="opts" style="margin-top:8px">${st.show.filter(k=>!seq.includes(k)).map(k=>`<button class="opt ordBtn" data-k="${k}" type="button">${st.items[k]}</button>`).join('')}</div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="clr" type="button">清掉重排</button></div>`;
+  }
+  if(st.type==='legcause'){
+    return `<p class="small"><b>哪一隻腳？</b>（前＝靠黑板，左＝靠窗戶）</p>
+    <div class="legs">${Object.entries(st.legs).map(([k,v])=>`<button class="opt legBtn ${d.leg===k?'sel':''}" data-k="${k}" type="button">${v}</button>`).join('')}</div>
+    <p class="small"><b>原因？</b></p>
+    <div class="opts">${Object.entries(st.causes).map(([k,v])=>`<button class="opt causeBtn ${d.cause===k?'sel':''}" data-k="${k}" type="button">${v}</button>`).join('')}</div>`;
+  }
+  const keys=st.order||Object.keys(st.options);
+  return `<div class="opts">${keys.map(k=>`<button class="opt chBtn ${d.pick===k?'sel':''}" data-k="${k}" type="button">${esc(st.options[k])}</button>`).join('')}</div>`;
+}
+function isComplete(st){const d=S.draft||{};if(st.type==='order')return (d.seq||[]).length===st.show.length;if(st.type==='legcause')return d.leg&&d.cause;return !!d.pick;}
+function isRight(st){const d=S.draft||{};if(st.type==='order')return d.seq.join()===st.answer.join();if(st.type==='legcause')return d.leg===st.answer.leg&&d.cause===st.answer.cause;return d.pick===st.answer;}
+
+function vStage(){
+  const st=STAGES[S.stage];
+  let body='';
+  if(S.phase==='clue'){
+    const cool=Math.max(0,Math.ceil((S.cool-Date.now())/1000));
+    body=`<div class="clues">${roles().map(r=>clueHtml(st,r)).join('')}</div>
+    <div class="paper"><p class="q" style="margin-top:0">${esc(st.q)}</p>${answerUI(st)}
+     <div id="fb" style="margin-top:10px">${cool>0?`<div class="msg bad">對不上。先跟組員把線索再對一次。<span id="cd">${cool}</span> 秒後可以再送出。</div>`:''}</div>
+     <div class="row" style="margin-top:10px"><button class="btn" id="sub" type="button" ${(!isComplete(st)||cool>0)?'disabled':''}>送出答案</button>
+     ${S.wrongBy[S.stage]>0?`<button class="btn ghost" id="hintBtn" type="button">小提示</button>`:''}</div>
+     ${S.hintOn?`<p class="small" style="background:var(--paper2);padding:8px 12px;border-radius:8px">💡 ${esc(st.hint)}</p>`:''}
+     ${TEACHER?`<p class="small muted">答案：${esc(JSON.stringify(st.answer))}</p>`:''}
+    </div>`;
+  } else if(S.phase==='piece'){
+    body=`<div class="paper pop"><div class="msg ok">對上了！</div>
+    <p>你拿到的圖案（只有你的平板有）：</p>
+    <div class="pieces">${roles().map(r=>`<div style="text-align:center"><div class="piece">${st.pieces[r]}</div><div class="small">第 ${r} 格</div></div>`).join('')}</div>
+    <p class="small muted">用說的告訴組員「第幾格是什麼」。要等全組都答對，圖案才會到齊。</p>
+    <button class="btn" id="toGate" type="button">輸入全組的圖案</button></div>`;
+  } else if(S.phase==='gate'){
+    const g=S.gate||[];
+    body=`<div class="paper"><p class="q" style="margin-top:0">${S.stage<STAGES.length-1?'打開下一關':'打開最後一頁'}：照 1 到 4 格的順序輸入全組圖案</p>
+    <div class="slots">${[0,1,2,3].map(i=>`<div class="slot ${i===g.length?'cur':''}"><small>第 ${i+1} 格</small>${g[i]||''}</div>`).join('')}</div>
+    <div class="pad" style="margin-top:12px">${PAD.map(e=>`<button class="padBtn" data-e="${e}" type="button" aria-label="${PADNAME[e]}">${e}</button>`).join('')}</div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="gClr" type="button">清掉</button><button class="btn" id="gOk" type="button" ${g.length<4?'disabled':''}>打開</button></div>
+    <div id="gfb" style="margin-top:8px"></div>
+    <p class="small muted">${roles().length>1?'你的平板管不只一格，自己的那幾格也要填。':'還沒拿到的格子，問那個號碼的組員。'}</p></div>`;
+  }
+  app.innerHTML=head()+`<div class="paper"><h2>${esc(st.title)}</h2></div>`+body+pastClues()+resetBox()+footer();
+  bindStage(st);
+}
+function bindStage(st){
+  const d=S.draft=S.draft||{};
+  document.querySelectorAll('.ordBtn').forEach(b=>b.onclick=()=>{d.seq=(d.seq||[]).concat(b.dataset.k);save();vStage();bindFooter();bindReset();});
+  const clr=$('#clr');if(clr)clr.onclick=()=>{d.seq=[];save();vStage();bindFooter();bindReset();};
+  document.querySelectorAll('.legBtn').forEach(b=>b.onclick=()=>{d.leg=b.dataset.k;save();vStage();bindFooter();bindReset();});
+  document.querySelectorAll('.causeBtn').forEach(b=>b.onclick=()=>{d.cause=b.dataset.k;save();vStage();bindFooter();bindReset();});
+  document.querySelectorAll('.chBtn').forEach(b=>b.onclick=()=>{d.pick=b.dataset.k;save();vStage();bindFooter();bindReset();});
+  const hb=$('#hintBtn');if(hb)hb.onclick=()=>{S.hintOn=true;save();vStage();bindFooter();bindReset();};
+  const sub=$('#sub');if(sub)sub.onclick=()=>{
+    if(!isComplete(st)||S.cool>Date.now())return;
+    if(isRight(st)){S.phase='piece';S.hintOn=false;save();vStage();}
+    else{S.wrong++;S.wrongBy[S.stage]++;S.cool=Date.now()+COOLDOWN*1000;if(st.type==='order')d.seq=[];save();vStage();}
+    bindFooter();bindReset();
+  };
+  const tg=$('#toGate');if(tg)tg.onclick=()=>{S.phase='gate';S.gate=[];save();vStage();bindFooter();bindReset();};
+  document.querySelectorAll('.padBtn').forEach(b=>b.onclick=()=>{if(S.gate.length<4){S.gate.push(b.dataset.e);save();vStage();bindFooter();bindReset();}});
+  const gc=$('#gClr');if(gc)gc.onclick=()=>{S.gate=[];save();vStage();bindFooter();bindReset();};
+  const gok=$('#gOk');if(gok)gok.onclick=()=>{
+    const want=[1,2,3,4].map(r=>st.pieces[r]).join('');
+    if(S.gate.join('')===want){
+      S.gate=[];S.draft=null;S.cool=0;
+      if(S.stage<STAGES.length-1){S.stage++;S.phase='clue';go('stage');}
+      else{S.phase='done';go('heart');}
+    }else{
+      const mine=roles().every(r=>S.gate[r-1]===st.pieces[r]);
+      $('#gfb').innerHTML=`<div class="msg bad">打不開。${mine?'你自己的格子是對的，再跟組員確認他們的圖案和順序。':'先檢查你自己的那一格（'+roles().map(r=>'第 '+r+' 格').join('、')+'）放對了沒有。'}</div>`;
+      const m=$('#gfb').innerHTML;S.gate=[];save();vStage();bindFooter();bindReset();$('#gfb').innerHTML=m;
+    }
+  };
+}
+function vHeart(){
+  app.innerHTML=head()+`
+  <div class="paper"><h2>十分鐘拼回來了</h2><p>米米開窗通風，接著下雨，雨打濕了靠窗那隻橋腳。阿布回來拿水壺，想把歪掉的橋扶正，橋倒了，他嚇得跑出去。「壞掉也好」說的是他的水壺背帶。</p>
+  <p>王老師把四個人的心裡話分給你們。<b>輪流唸給組員聽</b>，或用自己的話說。</p></div>
+  ${roles().map(r=>`<div class="heart"><b>${HEARTS[r].who}的心裡話</b>\n${esc(HEARTS[r].text)}</div>`).join('')}
+  <div class="paper"><p style="margin-top:0">全組都聽完四個人的心裡話了嗎？</p><button class="btn" id="toPlan" type="button">都聽完了</button></div>${resetBox()}${footer()}`;
+  $('#toPlan').onclick=()=>go('plan');
+}
+function vPlan(){
+  const p=S.plans||[];
+  app.innerHTML=`<div class="hdr"><div>${myBadges()}</div></div><div class="paper">
+  <h2>接下來，小組先做哪兩件事？</h2>
+  <p class="small muted">全組討論後，每台都選同樣的兩件。沒有標準答案，每一件都有它的好處和代價。</p>
+  <div class="opts">${Object.entries(PLANS).map(([k,v])=>`<button class="opt plBtn ${p.includes(k)?'sel':''}" data-k="${k}" type="button">${p.includes(k)?'✔ ':''}${esc(v.t)}</button>`).join('')}</div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="plOk" type="button" ${p.length!==2?'disabled':''}>決定了（已選 ${p.length}/2）</button></div></div>${resetBox()}${footer()}`;
+  document.querySelectorAll('.plBtn').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(p.includes(k))S.plans=p.filter(x=>x!==k);else if(p.length<2)S.plans=p.concat(k);save();vPlan();bindFooter();bindReset();});
+  $('#plOk').onclick=()=>{if(S.plans.length===2){S.tEnd=S.tEnd||Date.now();go('end');}};
+}
+function vEnd(){
+  const used=mmss((S.tEnd||Date.now())-S.t0);
+  app.innerHTML=`<div class="hero" style="padding-bottom:6px"><div class="clock">10:10　上課鐘響之後</div><h1 style="font-size:clamp(26px,6vw,36px)">調查結束</h1></div>
+  <div class="paper"><h3>你們做的事</h3>
+  ${S.plans.map(k=>`<p><b>${esc(PLANS[k].t)}</b><br>${esc(PLANS[k].r)}</p>`).join('')}</div>
+  <div class="paper"><h3>這台平板的紀錄</h3>
+  <table class="end"><tr><td>花的時間</td><td class="timer" style="color:var(--ink)">${used}</td></tr>
+  ${STAGES.map((s,i)=>`<tr><td>${esc(s.title.replace('　','｜'))}</td><td>送錯 ${S.wrongBy[i]} 次</td></tr>`).join('')}</table></div>
+  <div class="paper"><h3>小組聊一聊</h3><ol style="padding-left:1.3em">
+   <li>一開始大家說是阿布，是根據「看到的」，還是「猜的」？豆豆看到的，哪一段是真的？</li>
+   <li>米米為什麼一直不敢說窗戶是她開的？如果你是她，需要別人怎麼做，你才說得出口？</li>
+   <li>剛剛你們這組，誰的線索最晚被說出來？那時候發生了什麼事？</li></ol></div>
+  <p class="sign">本遊戲由Peiching開發，角色與情境均為虛構</p>${resetBox()}${footer()}`;
+}
+
+setInterval(()=>{const t=$('#tm');if(t&&S.t0)t.textContent=mmss(Date.now()-S.t0);const cd=$('#cd');
+  if(cd){const c=Math.ceil((S.cool-Date.now())/1000);if(c<=0){vStage();bindFooter();bindReset();}else cd.textContent=c;}},500);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+window.__GAME={get S(){return S;},STAGES,SEATS,PLANS,reset(){try{localStorage.removeItem(KEY);}catch(e){}S=fresh();render();}};
+render();
+})();
+</script>
+
+</body>
+</html>
