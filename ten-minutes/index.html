@@ -50,7 +50,7 @@ h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0;line-height:1.3}
 .clue .who{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.05em}
 .clues{display:flex;flex-direction:column;gap:10px}
 .q{font-weight:700;font-size:19px}
-.opt{display:block;width:100%;text-align:left;font:inherit;background:var(--paper2);border:2px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink)}
+.opt{display:block;width:100%;box-sizing:border-box;text-align:left;font:inherit;background:var(--paper2);border:2px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink)}
 .opt.sel{border-color:var(--r1);background:#e6eefa}
 .opts{display:flex;flex-direction:column;gap:8px}
 .seq{display:flex;flex-wrap:wrap;gap:8px;min-height:52px;padding:8px;border:2px dashed var(--line);border-radius:10px;background:#fff}
@@ -131,12 +131,6 @@ const STAGES=[
   items:{rain:'🌧️ 開始下雨',abu:'🚶 阿布走進教室',open:'🪟 窗戶被打開',tilt:'🌈 紙橋開始歪'},
   show:['rain','abu','open','tilt'], answer:['open','rain','tilt','abu'],
   hint:'先找有寫幾點幾分的線索，再想：紙為什麼會歪？阿布看到橋的時候，橋是什麼樣子？',
-  clues:{
-   1:['值日生日誌：「10:02 開窗通風。——米米」','10:05 學校廣播：「下雨了，在操場的同學請到走廊。」'],
-   2:['飲水機排隊紀錄（衛生股長記的）：廣播響的時候，阿布排第 3 個，大約 2 分鐘後才輪到他。','從飲水機走回教室，大約要 1 分鐘。'],
-   3:['豆豆說：「我走到門口的時候，看到阿布兩手扶著橋，橋已經歪一邊了。」','小樹說：「我 10:00 出去的時候，橋還好好的。」'],
-   4:['紙橋其中一隻腳底下有一圈水，那隻腳的紙摸起來軟軟的。','窗台上有雨滴。']
-  },
   pieces:{1:'🍎',2:'🌙',3:'⭐',4:'🐟'}},
  {title:'第 2 關　是哪一隻腳？為什麼？',
   q:'紙橋先壞掉的是哪一隻腳？原因是什麼？',
@@ -145,12 +139,6 @@ const STAGES=[
   causes:{hit:'被人撞到',water:'被雨水弄濕、變軟',glue:'膠水還沒乾'},
   answer:{leg:'lf',cause:'water'},
   hint:'「前」是靠黑板那頭，「左」是窗戶那邊。三個原因，各有一條線索可以排除或支持。',
-  clues:{
-   1:['班級日誌：「昨天放學前橋腳塗膠水。今天 7:50 檢查：膠水已乾 ✔」'],
-   2:[{html:MAP_SVG}],
-   3:['小樹說：「我們試過，這種紙碰到水，大概三分鐘就軟掉了。」','隔壁班巡走廊的值週生說：「下課沒看到有人在你們教室後面跑來跑去。」'],
-   4:['濕掉的那隻腳，是離窗戶最近、又在橋頭那一邊的腳，旁邊還黏著一片樹葉。','橋身上沒有凹痕，也沒有鞋印。']
-  },
   pieces:{1:'🎈',2:'🍎',3:'🔔',4:'🌵'}},
  {title:'第 3 關　「壞掉也好」在說什麼？',
   q:'大家聽到阿布說「壞掉也好」。他說的「壞掉」，最可能是指什麼？',
@@ -158,12 +146,6 @@ const STAGES=[
   options:{bridge:'紙橋',strap:'阿布的水壺背帶',weather:'下雨天的戶外課'},
   answer:'strap',
   hint:'先確定那句話是在哪裡、幾點說的。說的人那時候看得到紙橋嗎？',
-  clues:{
-   1:['豆豆和柚子都說，聽到那句話是在 10:07 左右，地點在飲水機旁邊。'],
-   2:[{html:HALL_SVG},'從飲水機看不到教室裡面，中間隔著一道牆和樓梯。'],
-   3:['豆豆聽到的：「……壞掉也好啦……」（後面太吵，沒聽清楚）','柚子聽到的：「我的水壺背帶……」（只聽到前半句）'],
-   4:['阿布桌上的水壺，背帶斷了一邊。','水壺上貼著一張紙條：「哥哥的舊水壺」。']
-  },
   pieces:{1:'🐟',2:'🍩',3:'🌙',4:'🎈'}},
  {title:'第 4 關　把十分鐘拼回來',
   q:'哪一段說法，跟全組的線索完全對得上？',
@@ -176,14 +158,32 @@ const STAGES=[
   order:['b','ok','c','d'],
   answer:'ok',
   hint:'四段說法，每段錯的地方不一樣。每個人用自己的線索，各自刪掉一段。',
-  clues:{
-   1:['10:10 上課鐘響，小樹第一個走進教室，看到橋倒在地上。','（別忘了：開窗 10:02，下雨 10:05）'],
-   2:['豆豆當時站在門口，看得到後桌，但看不到窗台。','（別忘了：濕掉的是靠窗、靠黑板的那隻腳）'],
-   3:['豆豆說：「我看到阿布扶著橋，然後橋就倒了，他就跑出去。我就覺得一定是他弄的。」','（別忘了：「壞掉也好」是在飲水機說的）'],
-   4:['倒下的橋，只有一隻腳是彎的，其他三隻都是直的。','（別忘了：橋身上沒有鞋印、沒有凹痕）']
-  },
   pieces:{1:'⭐',2:'🌵',3:'🍩',4:'🔔'}}
 ];
+// 搜查點：每關每個角色依序解鎖；clue 為 null 的是「沒發現什麼」的地方
+const SPOTS=[
+ {1:[{n:'📓 班級日誌',c:'值日生日誌：「10:02 開窗通風。——米米」'},{n:'📢 廣播紀錄',c:'10:05 學校廣播：「下雨了，在操場的同學請到走廊。」'},{n:'🕰️ 教室時鐘',c:null,x:'時鐘走得很準，現在是 10:12。'}],
+  2:[{n:'🚰 飲水機',c:'飲水機排隊紀錄（衛生股長記的）：廣播響的時候，阿布排第 3 個，大約 2 分鐘後才輪到他。'},{n:'👣 走廊',c:'從飲水機走回教室，大約要 1 分鐘。'},{n:'🧺 置物櫃',c:null,x:'置物櫃都關好了，看不出什麼。'}],
+  3:[{n:'🙋 問豆豆',c:'豆豆說：「我走到門口的時候，看到阿布兩手扶著橋，橋已經歪一邊了。」'},{n:'🙋 問小樹',c:'小樹說：「我 10:00 出去的時候，橋還好好的。」'},{n:'🙋 問柚子',c:null,x:'柚子說：「我下課都在走廊，沒進教室。」'}],
+  4:[{n:'🌈 紙橋',c:'紙橋其中一隻腳底下有一圈水，那隻腳的紙摸起來軟軟的。'},{n:'🪟 窗台',c:'窗台上有雨滴。'},{n:'🗑️ 垃圾桶',c:null,x:'只有幾張衛生紙。'}]},
+ {1:[{n:'📓 班級日誌',c:'班級日誌：「昨天放學前橋腳塗膠水。今天 7:50 檢查：膠水已乾 ✔」'},{n:'📅 值日表',c:null,x:'今天的值日生是米米。跟膠水沒有關係。'}],
+  2:[{n:'🗺️ 教室平面圖',html:'MAP'},{n:'🌳 窗外',c:'窗外的樹只長在靠黑板的那半邊。'}],
+  3:[{n:'🙋 問小樹',c:'小樹說：「我們試過，這種紙碰到水，大概三分鐘就軟掉了。」'},{n:'🙋 問值週生',c:'隔壁班巡走廊的值週生說：「下課沒看到有人在你們教室後面跑來跑去。」'}],
+  4:[{n:'🌈 四隻橋腳',c:'濕掉的那隻腳，是離窗戶最近、又在橋頭那一邊的腳，旁邊還黏著一片樹葉。'},{n:'🔍 橋身',c:'橋身上沒有凹痕，也沒有鞋印。'},{n:'👟 地板',c:null,x:'地板乾乾的，只有一點灰塵。'}]},
+ {1:[{n:'📢 廣播紀錄',c:null,x:'這段時間沒有廣播。'},{n:'📝 訪談紀錄',c:'豆豆和柚子都說，聽到那句話是在 10:07 左右，地點在飲水機旁邊。'}],
+  2:[{n:'🗺️ 走廊圖',html:'HALL'},{n:'👀 站在飲水機往教室看',c:'從飲水機看不到教室裡面，中間隔著一道牆和樓梯。'}],
+  3:[{n:'🙋 問豆豆',c:'豆豆聽到的：「……壞掉也好啦……」（後面太吵，沒聽清楚）'},{n:'🙋 問柚子',c:'柚子聽到的：「我的水壺背帶……」（只聽到前半句）'}],
+  4:[{n:'🎒 阿布的座位',c:'阿布桌上的水壺，背帶斷了一邊。'},{n:'🏷️ 水壺',c:'水壺上貼著一張紙條：「哥哥的舊水壺」。'},{n:'📚 阿布的抽屜',c:null,x:'只有課本和一包面紙。'}]},
+ {1:[{n:'🔔 上課鐘',c:'10:10 上課鐘響，小樹第一個走進教室，看到橋倒在地上。'},{n:'📓 翻回前面的紀錄',c:'開窗 10:02，下雨 10:05。'}],
+  2:[{n:'🚪 教室門口',c:'豆豆當時站在門口，看得到後桌，但看不到窗台。'},{n:'🗺️ 翻回平面圖',c:'濕掉的是靠窗、靠黑板的那隻腳。'}],
+  3:[{n:'🙋 再問一次豆豆',c:'豆豆說：「我看到阿布扶著橋，然後橋就倒了，他就跑出去。我就覺得一定是他弄的。」'},{n:'📝 翻回前面的筆記',c:'「壞掉也好」是在飲水機說的。'}],
+  4:[{n:'🌈 倒下的橋',c:'倒下的橋，只有一隻腳是彎的，其他三隻都是直的。'},{n:'🔍 再看一次橋身',c:'橋身上沒有鞋印、沒有凹痕。'}]}
+];
+function spotKey(i,r,j){return i+'-'+r+'-'+j;}
+function isFound(i,r,j){return TEACHER||!!(S.found&&S.found[spotKey(i,r,j)]);}
+function spotOpen(i,r,j){return j===0||isFound(i,r,j-1);}
+function allFound(i){return roles().every(r=>SPOTS[i][r].every((sp,j)=>isFound(i,r,j)));}
+function spotBody(sp){return sp.html==='MAP'?MAP_SVG:sp.html==='HALL'?HALL_SVG:esc(sp.c);}
 const HEARTS={
  1:{who:'米米',text:'老師說教室太悶，叫值日生開窗。我開了，就去操場了，我沒想到會下雨。\n大家一直在說阿布，我好幾次想舉手說「窗戶是我開的」，可是我怕大家就改成看著我。'},
  2:{who:'阿布',text:'我回去拿水壺，看到橋歪一邊，就想把它扶正。結果手一碰，它就倒了。\n我腦袋一片空白，就跑出去了。豆豆說是我弄的，我想說不是，可是我真的有碰到它。'},
@@ -200,7 +200,7 @@ const PLANS={
 
 // ---------- 狀態 ----------
 let S=load();
-function fresh(){return {screen:'start',size:null,seat:null,stage:0,phase:'clue',wrong:0,wrongBy:[0,0,0,0],t0:null,tEnd:null,draft:null,gate:[],plans:[],cool:0,hintOn:false};}
+function fresh(){return {screen:'start',size:null,seat:null,stage:0,phase:'clue',wrong:0,wrongBy:[0,0,0,0],t0:null,tEnd:null,draft:null,gate:[],plans:[],cool:0,hintOn:false,found:{}};}
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&v.screen)return Object.assign(fresh(),v);}catch(e){}return fresh();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function roles(){return TEACHER?[1,2,3,4]:(S.size&&S.seat?SEATS[S.size][S.seat]:[]);}
@@ -285,8 +285,8 @@ function vIntro(){
    <p class="small muted">出現的人：小樹（做橋的人）、米米（今天的值日生）、阿布（大家說是他）、豆豆（第一個喊出來的人）、柚子（在走廊的人）</p>
   </div>
   <div class="paper">
-   <h3>你的工作</h3>
-   ${roles().map(r=>`<p><span class="badge b${r}">${ROLES[r].icon} ${ROLES[r].name}</span>　${ROLES[r].job}</p>`).join('')}
+   <h3>你的身分和提示</h3>
+   ${roles().map(r=>`<p><span class="badge b${r}">${ROLES[r].icon} ${ROLES[r].name}</span>　${ROLES[r].job}<br><b>你的第一個提示：</b>先去查「${SPOTS[0][r][0].n}」。查完一個地方，才會想到下一個要查哪裡。</p>`).join('')}
    <h3>調查小組三條規則</h3>
    <ol style="padding-left:1.3em;margin:6px 0">
     <li>你的畫面只有你看得到。線索<b>用說的</b>，不要把平板拿給別人看。</li>
@@ -300,13 +300,24 @@ function vIntro(){
 function head(){
   return `<div class="hdr"><div>${myBadges()}</div><div class="row" style="align-items:center"><div class="steps">${STAGES.map((s,i)=>`<i class="${i<S.stage?'done':i===S.stage?'on':''}"></i>`).join('')}</div><span class="timer" id="tm">${mmss(Date.now()-S.t0)}</span></div></div>`;
 }
-function clueHtml(st,r){
-  return (st.clues[r]||[]).map(c=>`<div class="clue c${r}"><div class="who">${ROLES[r].icon} ${ROLES[r].name}的線索</div>${typeof c==='string'?esc(c):c.html}</div>`).join('');
+function clueHtml(i,r){
+  return SPOTS[i][r].map((sp,j)=>(isFound(i,r,j)&&(sp.c||sp.html))?`<div class="clue c${r}"><div class="who">${ROLES[r].icon} ${ROLES[r].name}｜${sp.n}</div>${spotBody(sp)}</div>`:'').join('');
+}
+function searchHtml(i){
+  return roles().map(r=>{
+    const list=SPOTS[i][r];
+    const got=list.filter((sp,j)=>isFound(i,r,j)).length;
+    return `<div class="paper"><div class="row" style="justify-content:space-between;align-items:center"><span class="badge b${r}">${ROLES[r].icon} ${ROLES[r].name}要查的地方</span><span class="small muted">查過 ${got}/${list.length}</span></div>
+    <div class="opts" style="margin-top:10px">${list.map((sp,j)=>{
+      if(isFound(i,r,j)) return (sp.c||sp.html)?`<div class="clue c${r}"><div class="who">${sp.n}</div>${spotBody(sp)}</div>`:`<div class="clue c${r}" style="opacity:.7"><div class="who">${sp.n}</div>${esc(sp.x)}</div>`;
+      if(spotOpen(i,r,j)) return `<button class="opt spotBtn" data-k="${spotKey(i,r,j)}" type="button">🔍 去查：${sp.n}</button>`;
+      return `<div class="opt" style="opacity:.5;cursor:default">🔒 ？？？（先查完上一個地方）</div>`;
+    }).join('')}</div></div>`;}).join('');
 }
 function pastClues(){
   if(S.stage===0)return '';
   let h='<details><summary>之前的線索（你的）</summary>';
-  for(let i=0;i<S.stage;i++){h+=`<div class="small" style="margin-top:8px;color:var(--chalk)">${STAGES[i].title}</div>`+roles().map(r=>clueHtml(STAGES[i],r)).join('');}
+  for(let i=0;i<S.stage;i++){h+=`<div class="small" style="margin-top:8px;color:var(--chalk)">${STAGES[i].title}</div>`+roles().map(r=>clueHtml(i,r)).join('');}
   return h+'</details>';
 }
 function answerUI(st){
@@ -335,14 +346,15 @@ function vStage(){
   let body='';
   if(S.phase==='clue'){
     const cool=Math.max(0,Math.ceil((S.cool-Date.now())/1000));
-    body=`<div class="clues">${roles().map(r=>clueHtml(st,r)).join('')}</div>
-    <div class="paper"><p class="q" style="margin-top:0">${esc(st.q)}</p>${answerUI(st)}
+    const ready=allFound(S.stage);
+    body=searchHtml(S.stage)+(!ready?`<div class="paper"><p class="q" style="margin-top:0">${esc(st.q)}</p><p class="muted" style="margin-bottom:0">先把你要查的地方查完，問題的作答區才會打開。查到的東西用說的告訴組員。</p></div>`:`
+    <div class="paper"><p class="q" style="margin-top:0">${esc(st.q)}</p><p class="small muted">你的線索都找到了。先聽完組員的線索再作答。</p>${answerUI(st)}
      <div id="fb" style="margin-top:10px">${cool>0?`<div class="msg bad">對不上。先跟組員把線索再對一次。<span id="cd">${cool}</span> 秒後可以再送出。</div>`:''}</div>
      <div class="row" style="margin-top:10px"><button class="btn" id="sub" type="button" ${(!isComplete(st)||cool>0)?'disabled':''}>送出答案</button>
      ${S.wrongBy[S.stage]>0?`<button class="btn ghost" id="hintBtn" type="button">小提示</button>`:''}</div>
      ${S.hintOn?`<p class="small" style="background:var(--paper2);padding:8px 12px;border-radius:8px">💡 ${esc(st.hint)}</p>`:''}
      ${TEACHER?`<p class="small muted">答案：${esc(JSON.stringify(st.answer))}</p>`:''}
-    </div>`;
+    </div>`);
   } else if(S.phase==='piece'){
     body=`<div class="paper pop"><div class="msg ok">對上了！</div>
     <p>你拿到的圖案（只有你的平板有）：</p>
@@ -363,6 +375,7 @@ function vStage(){
 }
 function bindStage(st){
   const d=S.draft=S.draft||{};
+  document.querySelectorAll('.spotBtn').forEach(b=>b.onclick=()=>{S.found=S.found||{};S.found[b.dataset.k]=true;save();vStage();bindFooter();bindReset();});
   document.querySelectorAll('.ordBtn').forEach(b=>b.onclick=()=>{d.seq=(d.seq||[]).concat(b.dataset.k);save();vStage();bindFooter();bindReset();});
   const clr=$('#clr');if(clr)clr.onclick=()=>{d.seq=[];save();vStage();bindFooter();bindReset();};
   document.querySelectorAll('.legBtn').forEach(b=>b.onclick=()=>{d.leg=b.dataset.k;save();vStage();bindFooter();bindReset();});
