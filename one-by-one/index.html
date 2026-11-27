@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一隻接一隻</title>
+<style>
+:root{--bg:#f4efe4;--card:#fffaf0;--ink:#2e2a24;--sub:#6b6357;--line:#d9cfbd;--cellA:#e6dcc6;--cellB:#d8ccb2;--acc:#3c7a5a;--acc2:#e0973a;--warn:#c4513f;--sel:#f2c14e;--ok:#3c7a5a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1b18;--card:#28251f;--ink:#efe8db;--sub:#b3a993;--line:#4a4438;--cellA:#3a352c;--cellB:#312d25;--acc:#6dbb8f;--acc2:#e8a957;--warn:#e07a69;--sel:#d9ac3c;--ok:#6dbb8f}}
+:root[data-theme="dark"]{--bg:#1d1b18;--card:#28251f;--ink:#efe8db;--sub:#b3a993;--line:#4a4438;--cellA:#3a352c;--cellB:#312d25;--acc:#6dbb8f;--acc2:#e8a957;--warn:#e07a69;--sel:#d9ac3c;--ok:#6dbb8f}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:560px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px}
+h1{font-size:26px;margin:4px 0 8px}h2{font-size:20px;margin:4px 0 8px}
+p{line-height:1.7;margin:8px 0}
+.sub{color:var(--sub);font-size:14px}
+.sig{color:var(--sub);font-size:13px;margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.btn{font:inherit;font-size:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px 16px;cursor:pointer;touch-action:manipulation}
+.btn:active{transform:scale(.97)}
+.btn.main{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.pill{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--cellA);color:var(--ink)}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(100%,420px);margin:6px auto 12px;touch-action:none;user-select:none}
+.cell{aspect-ratio:1;border-radius:12px;background:var(--cellA);position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(30px,11vw,52px);cursor:pointer;transition:background .15s}
+.cell.alt{background:var(--cellB)}
+.cell.sel{background:var(--sel)}
+.cell.tgt::after{content:"";position:absolute;inset:6px;border:3px dashed var(--acc);border-radius:10px;animation:pulse 1s infinite}
+.cell.hint{box-shadow:0 0 0 4px var(--acc2) inset}
+.cell.bad{animation:shake .3s}
+.badge{position:absolute;right:4px;bottom:3px;font-size:13px;background:var(--acc);color:#fff;border-radius:99px;padding:0 7px;line-height:20px;font-weight:700}
+.piece{transition:transform .2s}
+.cell.sel .piece{transform:scale(1.12) translateY(-3px)}
+@keyframes pulse{50%{opacity:.35}}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.msg{min-height:48px;padding:10px 12px;border-radius:12px;background:var(--cellA);font-size:15px;line-height:1.6}
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.lg{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:var(--cellA);font-size:14px;line-height:1.4}
+.lg b{font-size:28px}
+.mini{display:grid;grid-template-columns:repeat(5,22px);gap:2px;flex:none}
+.mini i{width:22px;height:22px;border-radius:4px;background:var(--cellB);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px}
+.mini i.c{background:var(--line)}.mini i.m{background:var(--acc);opacity:.75}
+.lvls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.lv{padding:12px 6px;text-align:center;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;font:inherit;color:var(--ink)}
+.lv.done{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 15%,var(--card))}
+.lv:disabled{opacity:.4;cursor:default}
+.lv small{display:block;color:var(--sub);font-size:12px;margin-top:4px}
+.choices{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+.talk{background:color-mix(in srgb,var(--acc2) 18%,var(--card));border-radius:12px;padding:10px 12px;margin:10px 0;line-height:1.7}
+ol{padding-left:22px;line-height:1.8}
+.hidden{display:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:.95}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+const N=4;
+const A={
+ F:{e:'🐸',n:'青蛙',how:'直直跳',d:'上下左右走直線，距離不限；中間有動物擋住就過不去。',rule:'rook'},
+ B:{e:'🐝',n:'蜜蜂',how:'斜斜飛',d:'只能斜著飛，距離不限；中間有動物擋住就過不去。',rule:'bishop'},
+ R:{e:'🐇',n:'兔子',how:'日字跳',d:'走「日」字形（直兩格再橫一格），可以跳過中間的動物。',rule:'knight'},
+ T:{e:'🐢',n:'烏龜',how:'慢慢爬',d:'往八個方向（含斜的）只走一格。',rule:'king'},
+ O:{e:'🦉',n:'貓頭鷹',how:'哪裡都看得到',d:'直線、斜線都可以，距離不限；中間有動物擋住就過不去。',rule:'queen'}
+};
+// 關卡由離線求解器挑選：每關都至少一種接完的方法
+const LEVELS=[
+ {b:'F...........FF..',name:'雨棚下的青蛙',newA:'F',story:'夜市散場，開始飄雨了。三隻青蛙要排成一隊，一起坐最後一班葉子船回家。'},
+ {b:'F.......TR......',name:'烏龜和兔子',newA:'TR',story:'烏龜跟兔子也在等船。烏龜只能爬一格，兔子跳法很特別，誰先動很重要。'},
+ {b:'.....B..FT.....R',name:'蜜蜂來了',newA:'B',story:'一隻蜜蜂躲在燈籠旁邊。牠只會斜著飛，要找到牠飛得到的朋友。'},
+ {b:'...TF..R..T...B.',name:'兩隻烏龜',newA:'',story:'五隻動物散在廣場上。這關開始，有些走法走下去會卡住，先想再動。',predict:true},
+ {b:'OBF.....F.....TR',name:'貓頭鷹點名',newA:'O',story:'貓頭鷹最會飛，但「最會飛」的那一隻，一定要第一個出發嗎？'},
+ {b:'..BRT......T.ORF',name:'最後一班船',newA:'',story:'七隻動物，雨愈來愈大。只要有一種接法能讓大家都上船就夠了。'}
+];
+const S={view:'start',lv:0,board:null,hist:[],sel:-1,hint:-1,hintTo:-1,stats:LEVELS.map(()=>null),cur:null,predict:null,unlocked:1};
+const $=s=>document.querySelector(s);
+const app=$('#app');
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800);}
+function parse(s){return s.split('').map(c=>c==='.'?null:{t:c,n:1});}
+function moves(b,i){const p=b[i];if(!p)return[];const x=i%N,y=i/N|0,out=[];
+ const R4=[[1,0],[-1,0],[0,1],[0,-1]],D4=[[1,1],[1,-1],[-1,1],[-1,-1]];
+ const ray=(dx,dy,max)=>{let cx=x+dx,cy=y+dy,s=0;while(cx>=0&&cy>=0&&cx<N&&cy<N&&s<max){const j=cy*N+cx;if(b[j]){out.push(j);return;}cx+=dx;cy+=dy;s++;}};
+ const r=A[p.t].rule;
+ if(r==='rook')R4.forEach(d=>ray(d[0],d[1],9));
+ if(r==='bishop')D4.forEach(d=>ray(d[0],d[1],9));
+ if(r==='queen')R4.concat(D4).forEach(d=>ray(d[0],d[1],9));
+ if(r==='king')R4.concat(D4).forEach(d=>ray(d[0],d[1],1));
+ if(r==='knight')[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].forEach(([dx,dy])=>{const cx=x+dx,cy=y+dy;if(cx>=0&&cy>=0&&cx<N&&cy<N&&b[cy*N+cx])out.push(cy*N+cx);});
+ return out;}
+function alive(b){return b.filter(Boolean).length;}
+function apply(b,i,j){const nb=b.slice();nb[j]={t:b[i].t,n:b[i].n+b[j].n};nb[i]=null;return nb;}
+function key(b){return b.map(p=>p?p.t:'.').join('');}
+const memo=new Map();
+function solvable(b){const k=key(b);if(memo.has(k))return memo.get(k);if(alive(b)===1){memo.set(k,true);return true;}
+ for(let i=0;i<16;i++)if(b[i])for(const j of moves(b,i))if(solvable(apply(b,i,j))){memo.set(k,true);return true;}
+ memo.set(k,false);return false;}
+function goodMove(b){for(let i=0;i<16;i++)if(b[i])for(const j of moves(b,i))if(solvable(apply(b,i,j)))return[i,j];return null;}
+function anyMove(b){for(let i=0;i<16;i++)if(b[i]&&moves(b,i).length)return true;return false;}
+
+/* ---------- 畫面 ---------- */
+function render(){
+ const v=S.view;
+ if(v==='start')return startView();
+ if(v==='map')return mapView();
+ if(v==='intro')return introView();
+ if(v==='predict')return predictView();
+ if(v==='play')return playView();
+ if(v==='clear')return clearView();
+ if(v==='end')return endView();
+}
+function legendHTML(keys){return '<div class="legend">'+keys.map(k=>'<div class="lg"><b>'+A[k].e+'</b><div><strong>'+A[k].n+'・'+A[k].how+'</strong><br><span class="sub">'+A[k].d+'</span></div></div>').join('')+'</div>';}
+function startView(){
+ app.innerHTML='<div class="panel"><div class="sub">週五熱門・邏輯推理小關卡</div><h1>一隻接一隻</h1>'+
+ '<p>葉子船的最後一班就要開了。廣場上的動物散在各處，船夫說：「我只載<strong>一隊</strong>。」</p>'+
+ '<p>規則只有三條：</p><ol><li>點一隻動物，再點牠<strong>走得到</strong>的另一隻動物，牠就會把對方背起來。</li><li>不能走到空格，每一步都一定要背到人。</li><li>最後廣場上只剩<strong>一隊</strong>，大家就上船了。</li></ol>'+
+ '<p class="sub">每種動物走法不一樣。卡住了可以「退一步」，真的想不出來也可以問船夫。</p>'+
+ '<div class="row"><button class="btn main" id="go">開始</button></div>'+
+ '<div class="sig">本遊戲由Peiching開發，角色與情境均為虛構</div></div>';
+ $('#go').onclick=()=>{S.view='map';render();};
+}
+function mapView(){
+ const done=S.stats.filter(Boolean).length;
+ app.innerHTML='<div class="panel"><div class="top"><h2>夜市廣場</h2><span class="pill">完成 '+done+' / '+LEVELS.length+'</span></div>'+
+ '<p class="sub">一關一關打開。已經過的關可以再玩，看看有沒有別的接法。</p><div class="lvls">'+
+ LEVELS.map((L,i)=>{const n=L.b.replace(/\./g,'').length;const st=S.stats[i];return '<button class="lv'+(st?' done':'')+'" data-l="'+i+'"'+(i<S.unlocked?'':' disabled')+'>第 '+(i+1)+' 關<small>'+(i<S.unlocked?L.name:'🔒')+'</small><small>'+n+' 隻'+(st?' ✓':'')+'</small></button>';}).join('')+
+ '</div>'+(done===LEVELS.length?'<div class="row" style="margin-top:12px"><button class="btn main" id="end">看船夫的紀錄</button></div>':'')+'</div>';
+ app.querySelectorAll('.lv').forEach(b=>b.onclick=()=>openLevel(+b.dataset.l));
+ const e=$('#end');if(e)e.onclick=()=>{S.view='end';render();};
+}
+function openLevel(i){S.lv=i;S.view='intro';render();}
+function introView(){
+ const L=LEVELS[S.lv];const keys=[...new Set(L.b.replace(/\./g,'').split(''))];
+ const fresh=L.newA.split('').filter(Boolean);
+ app.innerHTML='<div class="panel"><div class="sub">第 '+(S.lv+1)+' 關</div><h2>'+L.name+'</h2><p>'+L.story+'</p>'+
+ (fresh.length?'<p><strong>新朋友：</strong></p>'+legendHTML(fresh):'')+
+ '<p class="sub">這關有：'+keys.map(k=>A[k].e+A[k].n).join('、')+'</p>'+
+ '<div class="row"><button class="btn main" id="go">'+(L.predict&&S.predict===null?'先猜一猜':'出發')+'</button><button class="btn" id="back">回廣場</button></div></div>';
+ $('#go').onclick=()=>{if(L.predict&&S.predict===null){S.view='predict';render();}else startLevel();};
+ $('#back').onclick=()=>{S.view='map';render();};
+}
+function predictView(){
+ app.innerHTML='<div class="panel"><div class="sub">先猜再玩</div><h2>這關有 5 隻動物</h2><p>要變成只剩一隊，你猜<strong>一定</strong>要走幾步？</p>'+
+ '<div class="choices">'+['3 步','4 步','5 步','看怎麼走，不一定'].map((t,k)=>'<button class="btn" data-k="'+k+'">'+t+'</button>').join('')+'</div>'+
+ '<p class="sub">猜錯沒關係，過關後會對答案。</p></div>';
+ app.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.predict=+b.dataset.k;startLevel();});
+}
+function startLevel(){const L=LEVELS[S.lv];S.board=parse(L.b);S.hist=[];S.sel=-1;S.hint=-1;S.hintTo=-1;
+ S.cur={steps:0,undo:0,hints:0,stuck:0,t0:Date.now(),order:[]};S.view='play';S.msg='點一隻動物，看看牠走得到誰。';render();}
+function playView(){
+ const L=LEVELS[S.lv];const b=S.board;const tg=S.sel>=0?moves(b,S.sel):[];
+ const keys=[...new Set(L.b.replace(/\./g,'').split(''))];
+ let h='<div class="panel"><div class="top"><div><div class="sub">第 '+(S.lv+1)+' 關</div><h2 style="margin:0">'+L.name+'</h2></div><span class="pill" id="cnt">還有 '+alive(b)+' 隊・走了 '+S.cur.steps+' 步</span></div>';
+ h+='<div class="board" id="board">';
+ for(let i=0;i<16;i++){const p=b[i];const x=i%N,y=i/N|0;
+  const cls=['cell'];if((x+y)%2)cls.push('alt');if(i===S.sel)cls.push('sel');if(tg.includes(i))cls.push('tgt');if(i===S.hint||i===S.hintTo)cls.push('hint');
+  h+='<div class="'+cls.join(' ')+'" data-i="'+i+'" aria-label="'+(p?A[p.t].n:'空格')+'">'+(p?'<span class="piece">'+A[p.t].e+'</span>'+(p.n>1?'<span class="badge">'+p.n+'</span>':''):'')+'</div>';}
+ h+='</div><div class="msg" id="msg">'+S.msg+'</div>';
+ h+='<div class="row" style="margin-top:10px"><button class="btn" id="undo"'+(S.hist.length?'':' disabled')+'>↶ 退一步</button><button class="btn" id="reset">重來</button><button class="btn" id="hint">問船夫</button><button class="btn" id="back">回廣場</button></div>';
+ h+='<details style="margin-top:10px"><summary class="sub">動物走法</summary>'+legendHTML(keys)+'</details></div>';
+ app.innerHTML=h;
+ $('#undo').onclick=undo;$('#reset').onclick=()=>{S.cur.undo+=S.hist.length?1:0;const keep=S.cur;startLevel();S.cur.undo=keep.undo;S.cur.hints=keep.hints;S.cur.stuck=keep.stuck;S.cur.t0=keep.t0;render();};
+ $('#hint').onclick=hint;$('#back').onclick=()=>{S.view='map';render();};
+}
+function refresh(){playView();}
+let downI=-1;
+document.addEventListener('pointerdown',e=>{if(S.view!=='play')return;const c=e.target.closest&&e.target.closest('#board .cell');if(!c)return;e.preventDefault();downI=+c.dataset.i;tap(downI);});
+document.addEventListener('pointerup',e=>{if(S.view!=='play'||downI<0)return;const el=document.elementFromPoint(e.clientX,e.clientY);const c=el&&el.closest('#board .cell');const d=downI;downI=-1;if(!c)return;const j=+c.dataset.i;if(j!==d&&S.sel===d)tap(j);});
+function tap(i){const b=S.board;S.hint=S.hintTo=-1;
+ if(S.sel>=0&&i!==S.sel&&moves(b,S.sel).includes(i)){doMove(S.sel,i);return;}
+ if(b[i]){
+  if(S.sel===i){S.sel=-1;S.msg='放下了。換一隻看看？';refresh();return;}
+  S.sel=i;const m=moves(b,i);const p=b[i];
+  S.msg=m.length?A[p.t].e+' '+A[p.t].n+'（'+A[p.t].how+'）走得到 '+m.length+' 隻，閃虛線的就是。':A[p.t].e+' '+A[p.t].n+'（'+A[p.t].how+'）現在誰都走不到。';
+  refresh();return;}
+ if(S.sel>=0){S.msg='不能停在空格喔，每一步都要背到一隻動物。';refresh();const c=document.querySelector('[data-i="'+i+'"]');if(c)c.classList.add('bad');return;}
+ S.msg='先點一隻動物。';refresh();}
+function doMove(i,j){const b=S.board;const a=b[i],t=b[j];
+ S.hist.push(b);S.board=apply(b,i,j);S.cur.steps++;S.cur.order.push(A[a.t].e);S.sel=-1;
+ const left=alive(S.board);
+ if(left===1){return win();}
+ if(!anyMove(S.board)){S.cur.stuck++;S.msg='哎呀，還有 '+left+' 隊，可是誰都走不到誰了。按「退一步」，想想剛剛哪一步讓大家分太開？';}
+ else S.msg=A[a.t].e+' 背起了 '+A[t.t].e+(t.n>1?'（連同牠背上的 '+(t.n-1)+' 隻）':'')+'。這一隊現在照'+A[a.t].n+'的走法移動。';
+ refresh();}
+function undo(){if(!S.hist.length)return;S.board=S.hist.pop();S.cur.steps--;S.cur.order.pop();S.cur.undo++;S.sel=-1;S.hint=S.hintTo=-1;S.msg='退回去了。這次換個順序試試。';refresh();}
+function hint(){S.cur.hints++;const b=S.board;
+ if(!solvable(b)){S.msg='船夫搖搖頭：「從現在這樣，已經沒辦法讓大家變成一隊了。先退幾步吧。」';S.hint=S.hintTo=-1;refresh();return;}
+ const m=goodMove(b);S.sel=-1;
+ if(S.cur.lastHint===key(b)){S.hint=m[0];S.hintTo=m[1];S.msg='船夫指了指：「'+A[b[m[0]].t].n+'去背'+A[b[m[1]].t].n+'。」';}
+ else{S.hint=m[0];S.hintTo=-1;S.msg='船夫說：「現在還有辦法。可以先動亮橘框的那隻'+A[b[m[0]].t].n+'。」（再按一次會說得更清楚）';}
+ S.cur.lastHint=key(b);refresh();}
+function win(){const L=LEVELS[S.lv];const c=S.cur;const n=L.b.replace(/\./g,'').length;
+ const prev=S.stats[S.lv];const rec={n,steps:c.steps,undo:c.undo,hints:c.hints,stuck:c.stuck,sec:Math.round((Date.now()-c.t0)/1000),order:c.order.join(' → '),first:prev?prev.first:true};
+ S.stats[S.lv]=prev?Object.assign(rec,{first:false,undo:prev.undo+rec.undo,hints:prev.hints+rec.hints,stuck:prev.stuck+rec.stuck}):rec;
+ S.unlocked=Math.max(S.unlocked,Math.min(LEVELS.length,S.lv+2));S.view='clear';render();}
+const TALK=[
+ '三隻青蛙，走了 2 步。如果有 10 隻青蛙排在同一條線上，要走幾步？',
+ '這關有沒有「一定要先動」的那一隻？如果先動另一隻會怎樣？',
+ '蜜蜂只能斜著飛。有些格子牠一輩子都飛不到，你發現是哪些格子嗎？（提示：看格子的顏色）',
+ '',
+ '「最會飛」的貓頭鷹適合第一個出發，還是留到最後當隊長？為什麼？',
+ '七隻動物走了 6 步。從第一關到現在，步數跟動物數量有什麼關係？'
+];
+function clearView(){const L=LEVELS[S.lv];const st=S.stats[S.lv];const n=st.n;
+ let extra='';
+ if(L.predict){const right=S.predict===1;extra='<div class="talk"><strong>對答案：</strong>你猜「'+['3 步','4 步','5 步','不一定'][S.predict]+'」。'+(right?'猜對了！':'')+'5 隻動物一定要走 4 步。每走一步，廣場上就少一隊（被背起來的那隻不見了），從 5 隊變 1 隊，剛好少 4 隊。不管怎麼走，步數都一樣，不一樣的只有「會不會卡住」。</div>';}
+ const lines=[];
+ if(st.undo===0&&st.hints===0)lines.push('一次就接完，沒有退步也沒有問船夫。');
+ else{if(st.undo)lines.push('退了 '+st.undo+' 步。退一步不是輸，是在試別的可能。');if(st.hints)lines.push('問了船夫 '+st.hints+' 次。');}
+ if(st.stuck)lines.push('卡住過 '+st.stuck+' 次，每次卡住都告訴你一條「這樣不行」的路。');
+ app.innerHTML='<div class="panel"><div class="sub">第 '+(S.lv+1)+' 關完成</div><h2>大家都上船了 ⛵</h2>'+
+ '<p>'+n+' 隻動物，走了 '+st.steps+' 步，用了 '+st.sec+' 秒。</p><p class="sub">誰去背人：'+st.order+'</p>'+
+ lines.map(t=>'<p>'+t+'</p>').join('')+extra+(TALK[S.lv]?'<div class="talk">'+TALK[S.lv]+'</div>':'')+
+ '<div class="row">'+(S.lv<LEVELS.length-1?'<button class="btn main" id="next">下一關</button>':'<button class="btn main" id="end">看船夫的紀錄</button>')+'<button class="btn" id="again">這關再玩</button><button class="btn" id="map">回廣場</button></div></div>';
+ const nx=$('#next');if(nx)nx.onclick=()=>openLevel(S.lv+1);
+ const en=$('#end');if(en)en.onclick=()=>{S.view='end';render();};
+ $('#again').onclick=()=>{startLevel();};$('#map').onclick=()=>{S.view='map';render();};
+}
+function endView(){
+ const rows=S.stats.map((s,i)=>s?'<tr><td>'+(i+1)+'</td><td>'+s.n+'</td><td>'+s.steps+'</td><td>'+s.undo+'</td><td>'+s.stuck+'</td><td>'+s.hints+'</td></tr>':'').join('');
+ const tot=S.stats.filter(Boolean);const U=tot.reduce((a,s)=>a+s.undo,0),H=tot.reduce((a,s)=>a+s.hints,0);
+ app.innerHTML='<div class="panel"><div class="sub">結局</div><h2>最後一班船開走了</h2>'+
+ '<p>雨下大了，葉子船載著一隊一隊的動物回家。船夫在本子上寫下今晚的紀錄：</p>'+
+ '<table><tr><th>關</th><th>動物</th><th>步數</th><th>退步</th><th>卡住</th><th>問船夫</th></tr>'+rows+'</table>'+
+ '<p>每一關的步數都是「動物數量少 1」。這不是巧合：每走一步一定少一隊，所以步數早在出發前就決定了。真正要想的，是<strong>順序</strong>。</p>'+
+ (U>0?'<p>今晚一共退了 '+U+' 步。你是怎麼決定要退回哪裡的？</p>':'<p>今晚一步都沒退。下次可以試試故意走別條路，看看會在哪裡卡住。</p>')+
+ '<div class="talk"><strong>聊一聊</strong><ol><li>卡住的時候，通常是哪一種動物被「留在外面」？牠有什麼特別的地方？</li><li>有人說「先動走法最少的動物」，有人說「先動最遠的那隻」。你的方法是什麼？試試看在別關也有用嗎？</li><li>如果要你出一題給同學玩，你會怎麼擺，才能讓它「只有一種接法」？</li></ol></div>'+
+ '<div class="row"><button class="btn main" id="map">回廣場再挑一關</button><button class="btn" id="restart">從頭開始</button></div>'+
+ '<div class="sig">本遊戲由Peiching開發，角色與情境均為虛構</div></div>';
+ $('#map').onclick=()=>{S.view='map';render();};
+ $('#restart').onclick=()=>{S.stats=LEVELS.map(()=>null);S.unlocked=1;S.predict=null;S.view='start';render();};
+}
+window.__GAME={S,LEVELS,moves,solvable,goodMove,openLevel,startLevel,tap,undo,hint,render};
+render();
+})();
+</script>
+</body>
+</html>
