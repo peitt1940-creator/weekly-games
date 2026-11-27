@@ -5,6 +5,7 @@
 - 週一：2D RPG
 - 週三：合作體驗
 - 週五：熱門玩法改編
+- 週日：VR 情境（Meta Quest 2 可進入 VR，電腦、平板、手機也能玩；做法見 lib/VR-GUIDE.md）
 
 總目錄：https://peitt1940-creator.github.io/weekly-games/
 
