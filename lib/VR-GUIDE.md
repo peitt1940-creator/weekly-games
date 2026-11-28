@@ -8,7 +8,7 @@
 - 從 `vr-test/index.html` 複製當起點。檔案裡 `VR-KIT:START` 到 `VR-KIT:END` 之間不要手改，寫完執行：
   `node tools/inline-kit.mjs <資料夾>/index.html`
 - three.js 用 `loadThree()` 載入：先讀本 repo 的 `lib/three/`（版本 0.170.0），讀不到才用 jsdelivr、unpkg。不要另外引用別的外部套件或模型檔。
-- 底座 `lib/vr-kit.js` 提供：`createVR`、`panel`（3D 文字面板）、`button`、`interact`（可選物件）、`say`（對話框）、`hotspot`（傳送點）、`onUpdate`。需要底座沒有的功能，寫在遊戲自己的程式裡，不要改 `lib/vr-kit.js`（會影響所有舊遊戲）。
+- 底座 `lib/vr-kit.js` 提供：`createVR`、`panel`（3D 文字面板）、`button`、`interact`（可選物件）、`say`（對話框）、`intro`（開場畫面，自動附署名）、`hotspot`（傳送點）、`onUpdate`。需要底座沒有的功能，寫在遊戲自己的程式裡，不要改 `lib/vr-kit.js`（會影響所有舊遊戲）。
 
 ## 一定要遵守
 
@@ -19,7 +19,9 @@
 - 效能（Quest 2 要維持 72 fps）：網格總數 150 個以內、不開陰影、不用後製特效、材質用 MeshStandardMaterial 或 MeshBasicMaterial、重複物件盡量共用幾何與材質。
 - 不要對可互動物件自己改 `scale`（底座用 scale 做滑過與點擊回饋），要動畫就改位置、旋轉或顏色。
 - 一輪 10 分鐘內可玩完，有明確目標與至少一個結局。
-- 署名「本遊戲由Peiching開發，角色與情境均為虛構」放在場景裡（3D 面板），不放「莒光資優班」。
+- 遊戲一開始用 `app.intro({ title, text, onStart })` 顯示開場畫面，署名「本遊戲由Peiching開發，角色與情境均為虛構」由 intro 自動放在開場畫面下方。按「開始」後署名就不再出現：場景裡、結局畫面、其他面板都不要再放署名（Pei 2026-11-28 的要求）。不放「莒光資優班」。
+- 遊戲在按「開始」之前不能進行（物件點了沒反應），`nextTarget()` 在開始前回傳 `dlg:開始`。
+- 地面和大面積的平面要切細格，例如 `new THREE.PlaneGeometry(60, 60, 30, 30)`，不要用 `CircleGeometry` 或沒切格的大平面：大三角形經過玩家腳下時，有些裝置和模擬器會把地面畫在視線高度，蓋掉下半部畫面。
 - 不放真實人名、學生資料；不使用受版權保護的角色。
 
 ## 測試掛鉤（自動測試靠這個走完全程）
@@ -39,4 +41,4 @@ window.__GAME = {
 node tools/vr-check.mjs <資料夾>
 ```
 
-會用電腦、平板、手機三種畫面各跑一次（真的點擊、拖曳轉頭），再用 Meta 官方 IWER 模擬器模擬 Quest 2：按「進入 VR」、用模擬右手把射線加板機照 `nextTarget()` 點到結局、試搖桿轉向。`"ok": true` 才能上傳。截圖存在 `tools/_shot_*.png`（不進 git）。
+會用電腦、平板、手機三種畫面各跑一次（真的點擊、拖曳轉頭），再用 Meta 官方 IWER 模擬器模擬 Quest 2：按「進入 VR」、用模擬右手把射線加板機照 `nextTarget()` 點到結局、試搖桿轉向。`"ok": true` 才能上傳。截圖存在 `tools/_shot_*.png`（不進 git），其中 `_VR開場` 是剛進 VR 的畫面，要確認開場畫面完整、署名沒被切掉。

@@ -117,6 +117,7 @@ for (const [label, dev] of Object.entries(flatDevices)) {
     await page.waitForFunction(() => window.__VR && __VR.presenting, null, { timeout: 8000 });
     await waitFrames(page, 'xrFrames', 30);
     r.session = 'immersive-vr 已啟動';
+    await page.screenshot({ path: join(root, `tools/_shot_${folder}_VR開場.png`) });
     r.xrFramesAfterEnter = await page.evaluate(() => __VR.xrFrames);
     // 用模擬右手把一步步點到結局
     const log = [];

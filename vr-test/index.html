@@ -180,16 +180,28 @@ export function createVR(THREE, opts = {}) {
   function say(text, buttons = [{ label: '好', onSelect: null }], p = {}) {
     closeDialog();
     const g = new THREE.Group(); g.name = 'dialog';
-    const body = panel(Object.assign({ text, w: 1.1, h: 0.55, size: 38 }, p));
+    const { footer, ...pp } = p;
+    const body = panel(Object.assign({ text, w: 1.1, h: 0.55, size: 38 }, pp));
     g.add(body);
+    const bodyH = body.geometry.parameters.height, btnY = -bodyH / 2 - 0.1;
     const n = buttons.length, bw = Math.min(0.5, 1.0 / n - 0.04);
     buttons.forEach((b, i) => {
       const btn = button(b.label, () => { closeDialog(); b.onSelect && b.onSelect(); }, { w: bw, name: 'dlg:' + b.label, size: bw < 0.4 ? 32 : 40 });
-      btn.position.set((i - (n - 1) / 2) * (bw + 0.04), -0.37, 0.01);
+      btn.position.set((i - (n - 1) / 2) * (bw + 0.04), btnY, 0.01);
       g.add(btn);
     });
+    if (footer) {
+      const f = panel({ text: footer, w: 1.1, h: 0.1, size: 24, align: 'center', border: null, bg: 'rgba(255,255,255,0.75)' });
+      f.position.set(0, btnY - 0.16, 0.01); g.add(f);
+    }
     scene.add(g); placeInFront(g); dialog = g;
     return g;
+  }
+  // intro({title, text, startLabel, onStart}) 開場畫面：署名只出現在這裡，按「開始」後就消失、遊戲中不再出現
+  const SIGNATURE = '本遊戲由Peiching開發，角色與情境均為虛構';
+  function intro(c = {}) {
+    const label = c.startLabel || '開始';
+    return say(`${c.title || ''}\n${c.text || ''}`.trim(), [{ label, onSelect: c.onStart }], { h: c.h || 0.6, size: c.size || 38, footer: SIGNATURE });
   }
   function closeDialog() {
     if (!dialog) return;
@@ -308,6 +320,8 @@ export function createVR(THREE, opts = {}) {
       });
       await renderer.xr.setSession(session);
       vrBtn.textContent = '離開 VR'; tip.hidden = true;
+      // 進 VR 後頭的高度會變，把還開著的對話框（例如開場畫面）重新放到眼前
+      replaceAt = xrFrames + 10;
       o.onEnterVR && o.onEnterVR();
     } catch (err) { console.error(err); session = null; }
   };
@@ -315,12 +329,14 @@ export function createVR(THREE, opts = {}) {
   // ---------- 迴圈 ----------
   const updaters = [];
   const clock = new THREE.Clock();
-  let xrFrames = 0, frames = 0;
+  let xrFrames = 0, frames = 0, replaceAt = -1;
   renderer.setAnimationLoop((t, xrFrame) => {
     const dt = Math.min(0.05, clock.getDelta());
     frames++;
     if (renderer.xr.isPresenting) {
       xrFrames++;
+      // 進 VR 約 10 幀後頭的位置才穩定，這時再把開著的對話框移到眼前
+      if (xrFrames === replaceAt) { if (dialog) placeInFront(dialog); replaceAt = -1; }
       for (const c of controllers) {
         aimFrom(c); const h = c.visible ? pick() : null;
         c.userData.hover = h ? h.obj : null;
@@ -357,7 +373,7 @@ export function createVR(THREE, opts = {}) {
 
   const app = {
     THREE, scene, camera, renderer, rig, controllers,
-    panel, button, interact, unInteract, say, closeDialog, hotspot, teleport, turn, turnTo, placeInFront,
+    panel, button, interact, unInteract, say, intro, closeDialog, hotspot, teleport, turn, turnTo, placeInFront,
     onUpdate: f => updaters.push(f),
     isXR: () => renderer.xr.isPresenting,
     get dialog() { return dialog; },
@@ -391,7 +407,8 @@ const app = createVR(THREE, { background: 0xbfe0f5, fog: [0xbfe0f5, 12, 45] });
 const { scene } = app;
 
 // 場景：草地、圍一圈樹，讓人一轉頭就有東西看
-const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 48), new THREE.MeshStandardMaterial({ color: 0x8fbf6a }));
+// 地面切成細格（每格 2 公尺）：大三角形經過玩家腳下時，部分裝置會畫錯
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60, 30, 30), new THREE.MeshStandardMaterial({ color: 0x8fbf6a }));
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
 for (let i = 0; i < 24; i++) {
   const a = i / 24 * Math.PI * 2, r = 9 + (i % 3);
@@ -404,7 +421,7 @@ for (let i = 0; i < 24; i++) {
 }
 
 // 三顆燈泡：選到就亮，三顆都亮就過關
-const state = { lit: 0, ended: false };
+const state = { started: false, lit: 0, ended: false };
 const colors = [0xe9a51b, 0x3c7fa6, 0xb8573a];
 const bulbs = [];
 [[-1.2, -2.5], [0, -3], [1.2, -2.5]].forEach(([x, z], i) => {
@@ -414,7 +431,7 @@ const bulbs = [];
   const b = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 16), mat);
   b.position.set(x, 1.25, z); b.name = 'bulb' + (i + 1); scene.add(b);
   app.interact(b, { name: b.name, onSelect: () => {
-    if (b.userData.on) return;
+    if (!state.started || b.userData.on) return;
     b.userData.on = true; mat.color.setHex(colors[i]); mat.emissive.setHex(colors[i]); mat.emissiveIntensity = 0.8;
     state.lit++; info.setText(`燈泡亮了 ${state.lit} / 3 顆`);
     if (state.lit === 3) finish();
@@ -441,13 +458,13 @@ function reset() {
   info.setText('再點一次三顆燈泡');
 }
 
-const sign = app.panel({ text: '本遊戲由Peiching開發，角色與情境均為虛構', w: 1.4, h: 0.12, size: 30, align: 'center', border: null, bg: 'rgba(255,255,255,0.7)' });
-sign.position.set(0, 0.35, -3.2); scene.add(sign);
+// 開場畫面：署名只出現在這裡，按「開始」之後就不再出現
+app.intro({ title: 'VR 測試場', text: '點亮三顆燈泡，確認這台裝置可以玩週日 VR。', onStart: () => { state.started = true; } });
 
 // 測試積木：自動測試會照 nextTarget() 一步步用模擬手把點到結局
 window.__GAME = {
   get ended() { return state.ended; },
-  nextTarget() { if (state.ended) return null; const b = bulbs.find(b => !b.userData.on); return b ? b.name : null; },
+  nextTarget() { if (!state.started) return 'dlg:開始'; if (state.ended) return null; const b = bulbs.find(b => !b.userData.on); return b ? b.name : null; },
 };
 </script>
 </body>
