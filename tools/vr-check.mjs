@@ -95,6 +95,21 @@ for (const [label, dev] of Object.entries(flatDevices)) {
       r.playthrough = steps;
       if (!steps.ended) fail('平面模式照 nextTarget() 點完仍沒走到結局');
     }
+    // 遊戲選單：往上看（約 55 度），用真的點擊打開
+    await page.evaluate(() => __VR.look(0, 0.95)); await page.waitForTimeout(150);
+    const mp = await page.evaluate(() => __VR.screenPos('menu:open'));
+    if (!mp) { r.menu = '往上看找不到選單'; fail(`${label}：往上看看不到「☰ 選單」`); }
+    else {
+      if (dev.hasTouch) await page.touchscreen.tap(mp[0], mp[1]); else await page.mouse.click(mp[0], mp[1]);
+      await page.waitForTimeout(200);
+      const items = await page.evaluate(() => __VR.names().filter(n => n.startsWith('menu:')));
+      r.menu = items;
+      if (!items.includes('menu:music') || !items.includes('menu:reload')) fail(`${label}：點了選單但沒出現選項`);
+      if (items.includes('menu:exitVR')) fail(`${label}：平面模式不該出現「退出 VR」`);
+      await page.screenshot({ path: join(root, `tools/_shot_${folder}_${label}選單.png`) });
+      await page.evaluate(() => __VR.select('menu:close'));
+    }
+    await page.evaluate(() => __VR.look(0, 0));
     const shot = join(root, `tools/_shot_${folder}_${label}.png`);
     await page.screenshot({ path: shot }); r.screenshot = shot;
   } catch (e) { fail(`${label}：${e.message.split('\n')[0]}`); }
@@ -120,11 +135,7 @@ for (const [label, dev] of Object.entries(flatDevices)) {
     await page.screenshot({ path: join(root, `tools/_shot_${folder}_VR開場.png`) });
     r.xrFramesAfterEnter = await page.evaluate(() => __VR.xrFrames);
     // 用模擬右手把一步步點到結局
-    const log = [];
-    for (let i = 0; i < 80; i++) {
-      const name = await page.evaluate(() => window.__GAME.nextTarget());
-      if (!name) break;
-      const ok = await page.evaluate(async (name) => {
+    const aimAndTrigger = (name) => page.evaluate(async (name) => {
         const d = window.__IWER, c = d.controllers.right;
         const w = __VR.worldPos(name); if (!w) return 'noPos';
         const head = __VR.app.camera.getWorldPosition(new __VR.app.THREE.Vector3());
@@ -141,6 +152,11 @@ for (const [label, dev] of Object.entries(flatDevices)) {
         c.updateButtonValue('trigger', 0); await raf();
         return __VR.selectCount > before ? 'hit' : 'miss';
       }, name);
+    const log = [];
+    for (let i = 0; i < 80; i++) {
+      const name = await page.evaluate(() => window.__GAME.nextTarget());
+      if (!name) break;
+      const ok = await aimAndTrigger(name);
       log.push(`${name}:${ok}`);
       if (ok !== 'hit') { fail(`VR：手把射線點不到「${name}」(${ok})`); break; }
     }
@@ -153,6 +169,23 @@ for (const [label, dev] of Object.entries(flatDevices)) {
     r.snapTurn = (await page.evaluate(() => __VR.app.rig.rotation.y)) !== rot0;
     if (!r.snapTurn) fail('VR：搖桿左右推不會轉向');
     await page.screenshot({ path: join(root, `tools/_shot_${folder}_VR.png`) });
+    // 遊戲選單：手把點斜上方的「☰ 選單」→ 開關音樂 → 退出 VR
+    const m = r.menu = {};
+    m.open = await aimAndTrigger('menu:open');
+    const items = await page.evaluate(() => __VR.names().filter(n => n.startsWith('menu:')));
+    m.items = items;
+    if (m.open !== 'hit' || !items.includes('menu:exitVR')) fail('VR：手把點不到斜上方的選單，或選單裡沒有「退出 VR」');
+    else {
+      await page.screenshot({ path: join(root, `tools/_shot_${folder}_VR選單.png`) });
+      m.music = await aimAndTrigger('menu:music');
+      m.musicOn = await page.evaluate(() => __VR.app.music.on);
+      if (!m.musicOn) fail('VR：選單的音樂開關沒作用');
+      await aimAndTrigger('menu:music');
+      m.exit = await aimAndTrigger('menu:exitVR');
+      await page.waitForTimeout(300);
+      m.exitedVR = !(await page.evaluate(() => __VR.presenting));
+      if (!m.exitedVR) fail('VR：選單的「退出 VR」沒作用');
+    }
   } catch (e) { fail(`VR：${e.message.split('\n')[0]}`); }
   r.errors = errs; if (errs.length) fail(`VR：有錯誤 ${errs[0]}`);
   await ctx.close();
